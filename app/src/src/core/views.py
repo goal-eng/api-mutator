@@ -145,7 +145,7 @@ def proxy(request, user_pk: int):
 
     response = getattr(session, method)(
         'https://' + mixer.swagger['host'] + path,
-        headers=headers, json=data, params=query,
+        headers=headers, json=data, params=query, timeout=(60, 60),
     )
     if response.status_code == 401:
         AccessAttemptFailure.objects.create(user=user)
