@@ -4,20 +4,16 @@ from functools import lru_cache
 from pathlib import Path
 
 import requests
-
-from django.contrib.auth.models import User
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.exceptions import SuspiciousOperation, PermissionDenied
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic.base import View
-
 from django.views.generic import TemplateView
-
-
-from .mixer import ApiMixer, freeze
+from django.views.generic.base import View
+from .mixer import ApiMixer
 from .models import AccessAttemptFailure
 
 
