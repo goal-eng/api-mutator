@@ -1,0 +1,4003 @@
+{
+    "info": {
+        "title": "API title",
+        "version": "1.0"
+    },
+    "swagger": "2.0",
+    "produces": [
+        "application/json",
+        "application/xml"
+    ],
+    "host": "api.hubstaff.com",
+    "tags": [
+        {
+            "name": "auth",
+            "description": "Operations about auths"
+        },
+        {
+            "name": "users",
+            "description": "Operations about users"
+        },
+        {
+            "name": "organizations",
+            "description": "Operations about organizations"
+        },
+        {
+            "name": "integrations",
+            "description": "Operations about integrations"
+        },
+        {
+            "name": "projects",
+            "description": "Operations about projects"
+        },
+        {
+            "name": "activities",
+            "description": "Operations about activities"
+        },
+        {
+            "name": "screenshots",
+            "description": "Operations about screenshots"
+        },
+        {
+            "name": "notes",
+            "description": "Operations about notes"
+        },
+        {
+            "name": "tasks",
+            "description": "Operations about tasks"
+        },
+        {
+            "name": "weekly",
+            "description": "Operations about weeklies"
+        },
+        {
+            "name": "custom",
+            "description": "Operations about customs"
+        },
+        {
+            "name": "time_edit_logs",
+            "description": "Operations about time_edit_logs"
+        },
+        {
+            "name": "team_payments",
+            "description": "Operations about team_payments"
+        }
+    ],
+    "paths": {
+        "/v1/auth": {
+            "post": {
+                "description": "Obtain auth token for a user",
+                "produces": [
+                    "application/json"
+                ],
+                "consumes": [
+                    "application/x-www-form-urlencoded",
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "email",
+                        "description": "User email",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "password",
+                        "description": "User password",
+                        "type": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Obtain auth token for a user",
+                        "schema": {
+                            "$ref": "#/definitions/user_with_auth_token"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid email and/or password"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "auth"
+                ],
+                "operationId": "postV1Auth"
+            }
+        },
+        "/v1/users": {
+            "get": {
+                "description": "Retrieve users",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "organization_memberships",
+                        "description": "Include the organization memberships for each user",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_memberships",
+                        "description": "Include the project memberships for each user",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve users",
+                        "schema": {
+                            "$ref": "#/definitions/user_with_organizations_and_projects"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "users"
+                ],
+                "operationId": "getV1Users"
+            }
+        },
+        "/v1/users/{id}/projects": {
+            "get": {
+                "description": "Retrieve project memberships for a user",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "User ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve project memberships for a user",
+                        "schema": {
+                            "$ref": "#/definitions/project_with_status_and_description"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "users"
+                ],
+                "operationId": "getV1UsersIdProjects"
+            }
+        },
+        "/v1/users/{id}/organizations": {
+            "get": {
+                "description": "Retrieve organization memberships for a user",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "User ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve organization memberships for a user",
+                        "schema": {
+                            "$ref": "#/definitions/organization"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "users"
+                ],
+                "operationId": "getV1UsersIdOrganizations"
+            }
+        },
+        "/v1/users/{id}": {
+            "get": {
+                "description": "Retrieve a user",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "User ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve a user",
+                        "schema": {
+                            "$ref": "#/definitions/user_with_email"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "users"
+                ],
+                "operationId": "getV1UsersId"
+            }
+        },
+        "/v1/organizations": {
+            "get": {
+                "description": "Retrieve organizations",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve organizations",
+                        "schema": {
+                            "$ref": "#/definitions/organization"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1Organizations"
+            }
+        },
+        "/v1/organizations/{id}/integrations": {
+            "get": {
+                "description": "Retrieve integrations for an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Organization ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve integrations for an organization",
+                        "schema": {
+                            "$ref": "#/definitions/integration"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1OrganizationsIdIntegrations"
+            }
+        },
+        "/v1/organizations/{id}/last_activity": {
+            "get": {
+                "description": "Retrieve users last activity for an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Organization ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_removed",
+                        "description": "Include users that are removed from the organization",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve users last activity for an organization",
+                        "schema": {
+                            "$ref": "#/definitions/user_organization_last_activity"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1OrganizationsIdLastActivity"
+            }
+        },
+        "/v1/organizations/{id}/members": {
+            "get": {
+                "description": "Retrieve users for an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Organization ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_removed",
+                        "description": "Include users that are removed from the organization",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve users for an organization",
+                        "schema": {
+                            "$ref": "#/definitions/user_with_email"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1OrganizationsIdMembers"
+            }
+        },
+        "/v1/organizations/{id}/projects": {
+            "get": {
+                "description": "Retrieve projects for an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Organization ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve projects for an organization",
+                        "schema": {
+                            "$ref": "#/definitions/project_with_status_and_description"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1OrganizationsIdProjects"
+            }
+        },
+        "/v1/organizations/{id}": {
+            "get": {
+                "description": "Retrieve an organization",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Organization ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve an organization",
+                        "schema": {
+                            "$ref": "#/definitions/organization"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "organizations"
+                ],
+                "operationId": "getV1OrganizationsId"
+            }
+        },
+        "/v1/integrations": {
+            "get": {
+                "description": "Retrieve integrations",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve integrations",
+                        "schema": {
+                            "$ref": "#/definitions/integration"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "integrations"
+                ],
+                "operationId": "getV1Integrations"
+            }
+        },
+        "/v1/projects": {
+            "get": {
+                "description": "Retrieve projects",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "description": "Project status",
+                        "type": "string",
+                        "enum": [
+                            "active",
+                            "archived"
+                        ],
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve projects",
+                        "schema": {
+                            "$ref": "#/definitions/project_with_status_and_description"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "projects"
+                ],
+                "operationId": "getV1Projects"
+            }
+        },
+        "/v1/projects/{id}/links": {
+            "get": {
+                "description": "Retrieve integrations for a project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Project ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve integrations for a project",
+                        "schema": {
+                            "$ref": "#/definitions/integration_project_link"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "projects"
+                ],
+                "operationId": "getV1ProjectsIdLinks"
+            }
+        },
+        "/v1/projects/{id}/last_activity": {
+            "get": {
+                "description": "Retrieve users last activity for a project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Project ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_removed",
+                        "description": "Include users that are removed from the project",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve users last activity for a project",
+                        "schema": {
+                            "$ref": "#/definitions/user_project_last_activity"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "projects"
+                ],
+                "operationId": "getV1ProjectsIdLastActivity"
+            }
+        },
+        "/v1/projects/{id}/members": {
+            "get": {
+                "description": "Retrieve users for a project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Project ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_removed",
+                        "description": "Include users that are removed from the project",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve users for a project",
+                        "schema": {
+                            "$ref": "#/definitions/user_with_email"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "projects"
+                ],
+                "operationId": "getV1ProjectsIdMembers"
+            }
+        },
+        "/v1/projects/{id}": {
+            "get": {
+                "description": "Retrieve a project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Project ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve a project",
+                        "schema": {
+                            "$ref": "#/definitions/project_with_status_and_description"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "projects"
+                ],
+                "operationId": "getV1ProjectsId"
+            }
+        },
+        "/v1/activities": {
+            "get": {
+                "description": "Retrieve activities",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Stop time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve activities",
+                        "schema": {
+                            "$ref": "#/definitions/activity"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "activities"
+                ],
+                "operationId": "getV1Activities"
+            }
+        },
+        "/v1/activities/applications": {
+            "get": {
+                "description": "Retrieve application activities",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Stop time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve application activities",
+                        "schema": {
+                            "$ref": "#/definitions/application_activity"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "activities"
+                ],
+                "operationId": "getV1ActivitiesApplications"
+            }
+        },
+        "/v1/activities/urls": {
+            "get": {
+                "description": "Retrieve URL activities",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Stop time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve URL activities",
+                        "schema": {
+                            "$ref": "#/definitions/url_activity"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "activities"
+                ],
+                "operationId": "getV1ActivitiesUrls"
+            }
+        },
+        "/v1/screenshots": {
+            "get": {
+                "description": "Retrieve screenshots",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Stop time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve screenshots",
+                        "schema": {
+                            "$ref": "#/definitions/screenshot"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "screenshots"
+                ],
+                "operationId": "getV1Screenshots"
+            }
+        },
+        "/v1/notes": {
+            "get": {
+                "description": "Retrieve notes",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Start time",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Stop time",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve notes",
+                        "schema": {
+                            "$ref": "#/definitions/note_extended"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "notes"
+                ],
+                "operationId": "getV1Notes"
+            }
+        },
+        "/v1/notes/{id}": {
+            "get": {
+                "description": "Retrieve a note",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Note ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve a note",
+                        "schema": {
+                            "$ref": "#/definitions/note_extended"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "notes"
+                ],
+                "operationId": "getV1NotesId"
+            }
+        },
+        "/v1/tasks": {
+            "get": {
+                "description": "Retrieve tasks",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve tasks",
+                        "schema": {
+                            "$ref": "#/definitions/task_extended"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "tasks"
+                ],
+                "operationId": "getV1Tasks"
+            }
+        },
+        "/v1/tasks/{id}": {
+            "get": {
+                "description": "Retrieve a task",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "description": "Task ID",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve a task",
+                        "schema": {
+                            "$ref": "#/definitions/task_extended"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    },
+                    "404": {
+                        "description": "Could not find record"
+                    }
+                },
+                "tags": [
+                    "tasks"
+                ],
+                "operationId": "getV1TasksId"
+            }
+        },
+        "/v1/weekly/my": {
+            "get": {
+                "description": "Retrieve time worked my report for a week",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "date",
+                        "description": "Date in week (yyyy-mm-dd, default: current week)",
+                        "type": "string",
+                        "format": "date",
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve time worked my report for a week",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_users"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "weekly"
+                ],
+                "operationId": "getV1WeeklyMy"
+            }
+        },
+        "/v1/weekly/team": {
+            "get": {
+                "description": "Retrieve time worked team report for a week",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "date",
+                        "description": "Date in week (yyyy-mm-dd, default: current week)",
+                        "type": "string",
+                        "format": "date",
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve time worked team report for a week",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_users"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "weekly"
+                ],
+                "operationId": "getV1WeeklyTeam"
+            }
+        },
+        "/v1/custom/by_project/my": {
+            "get": {
+                "description": "Retrieve custom my report grouped by project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom my report grouped by project",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_projects"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByProjectMy"
+            }
+        },
+        "/v1/custom/by_project/team": {
+            "get": {
+                "description": "Retrieve custom team report grouped by project",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom team report grouped by project",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_projects"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByProjectTeam"
+            }
+        },
+        "/v1/custom/by_member/my": {
+            "get": {
+                "description": "Retrieve custom my report grouped by user",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom my report grouped by user",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_users"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByMemberMy"
+            }
+        },
+        "/v1/custom/by_member/team": {
+            "get": {
+                "description": "Retrieve custom team report grouped by user",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom team report grouped by user",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_users"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByMemberTeam"
+            }
+        },
+        "/v1/custom/by_date/my": {
+            "get": {
+                "description": "Retrieve custom my report grouped by date",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom my report grouped by date",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_dates"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByDateMy"
+            }
+        },
+        "/v1/custom/by_date/team": {
+            "get": {
+                "description": "Retrieve custom team report grouped by date",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "description": "Start date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "description": "End date (yyyy-mm-dd)",
+                        "type": "string",
+                        "format": "date",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of users IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_tasks",
+                        "description": "Include tasks in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_notes",
+                        "description": "Include notes in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "show_activity",
+                        "description": "Include activity percentages in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include_archived",
+                        "description": "Include archived projects in report (default: false)",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve custom team report grouped by date",
+                        "schema": {
+                            "$ref": "#/definitions/organization_with_dates"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan"
+                    }
+                },
+                "tags": [
+                    "custom"
+                ],
+                "operationId": "getV1CustomByDateTeam"
+            }
+        },
+        "/v1/time_edit_logs": {
+            "get": {
+                "description": "Retrieve time edit logs",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Created at start time filter (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Created at stop time filter (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve time edit logs",
+                        "schema": {
+                            "$ref": "#/definitions/time_edit_log"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "tags": [
+                    "time_edit_logs"
+                ],
+                "operationId": "getV1TimeEditLogs"
+            }
+        },
+        "/v1/team_payments": {
+            "get": {
+                "description": "Retrieve team payments",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Auth-Token",
+                        "description": "User auth token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "App-Token",
+                        "description": "Application app token",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "start_time",
+                        "description": "Created at start time filter (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "stop_time",
+                        "description": "Created at stop time filter (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "formData",
+                        "name": "organizations",
+                        "description": "List of organization IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "projects",
+                        "description": "List of project IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "formData",
+                        "name": "users",
+                        "description": "List of user IDs (comma separated)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "offset",
+                        "description": "Index of the first record returned (starts at 0)",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Retrieve team payments",
+                        "schema": {
+                            "$ref": "#/definitions/team_payment"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "tags": [
+                    "team_payments"
+                ],
+                "operationId": "getV1TeamPayments"
+            }
+        }
+    },
+    "definitions": {
+        "user_with_auth_token": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "auth_token": {
+                    "type": "string",
+                    "description": "Auth token"
+                }
+            },
+            "description": "Obtain auth token for a user"
+        },
+        "user_with_organizations_and_projects": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "User email address"
+                },
+                "organizations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/organization"
+                    },
+                    "description": "Organizations"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/project_with_status"
+                    },
+                    "description": "Projects"
+                }
+            },
+            "description": "Retrieve users"
+        },
+        "organization": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Organization ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Organization name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                }
+            },
+            "description": "Retrieve an organization"
+        },
+        "project_with_status": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Project name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Project status"
+                }
+            }
+        },
+        "project_with_status_and_description": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Project name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Project status"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Project description"
+                }
+            },
+            "description": "Retrieve a project"
+        },
+        "user_with_email": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "email": {
+                    "type": "string",
+                    "description": "User email address"
+                }
+            },
+            "description": "Retrieve users for a project"
+        },
+        "integration": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Integration ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Integration name"
+                },
+                "organization_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Organization ID"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Integration type"
+                },
+                "last_sync_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last time the integration was synced"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Status"
+                },
+                "disabled_reason": {
+                    "type": "string",
+                    "description": "Disabled reason"
+                }
+            },
+            "description": "Retrieve integrations"
+        },
+        "user_organization_last_activity": {
+            "type": "object",
+            "properties": {
+                "last_activity": {
+                    "type": "string"
+                },
+                "last_task_id": {
+                    "type": "string"
+                },
+                "last_project_id": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/user_with_email"
+                }
+            },
+            "description": "Retrieve users last activity for an organization"
+        },
+        "integration_project_link": {
+            "type": "object",
+            "properties": {
+                "integration_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Integration ID"
+                },
+                "integration_type": {
+                    "type": "string",
+                    "description": "Integration type"
+                },
+                "integration_name": {
+                    "type": "string",
+                    "description": "Integration name"
+                },
+                "integration_status": {
+                    "type": "string",
+                    "description": "Integration status"
+                },
+                "integration_disabled_reason": {
+                    "type": "string",
+                    "description": "Disabled reason"
+                },
+                "remote_id": {
+                    "type": "string",
+                    "description": "Integration remote ID"
+                },
+                "remote_alternate_id": {
+                    "type": "string",
+                    "description": "Integration remote alternate ID"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Status"
+                },
+                "disabled_reason": {
+                    "type": "string",
+                    "description": "Disabled reason"
+                }
+            },
+            "description": "Retrieve integrations for a project"
+        },
+        "user_project_last_activity": {
+            "type": "object",
+            "properties": {
+                "last_activity": {
+                    "type": "string"
+                },
+                "last_task_id": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/user_with_email"
+                }
+            },
+            "description": "Retrieve users last activity for a project"
+        },
+        "activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Activity ID"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time slot"
+                },
+                "starts_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time tracking was started within time slot"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                },
+                "keyboard": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time keyboard was active within the time worked"
+                },
+                "mouse": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time mouse was active within the time worked"
+                },
+                "overall": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of overall time active within the time worked"
+                },
+                "tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time worked in seconds"
+                },
+                "paid": {
+                    "type": "boolean",
+                    "description": "Whether the time has been paid for"
+                }
+            },
+            "description": "Retrieve activities"
+        },
+        "application_activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Application activity ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Application name"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time slot"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                },
+                "tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time in seconds spent in this application"
+                }
+            },
+            "description": "Retrieve application activities"
+        },
+        "url_activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "URL activity ID"
+                },
+                "site": {
+                    "type": "string",
+                    "description": "URL site"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time slot"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                },
+                "tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time in seconds spent on this site"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/url_activity_detail"
+                    },
+                    "description": "URL activity details"
+                }
+            },
+            "description": "Retrieve URL activities"
+        },
+        "url_activity_detail": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Page title"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Visited URL"
+                },
+                "tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time in seconds spent on this URL"
+                }
+            }
+        },
+        "screenshot": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screenshot ID"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Screenshot URL"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time slot"
+                },
+                "recorded_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time screenshot was recorded"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "offset_x": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screen offset X"
+                },
+                "offset_y": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screen offset Y"
+                },
+                "width": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screenshot width"
+                },
+                "height": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screenshot height"
+                },
+                "screen": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Screen number"
+                }
+            },
+            "description": "Retrieve screenshots"
+        },
+        "note_extended": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Note ID"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Note description"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                },
+                "time_slot": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time slot"
+                },
+                "recorded_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time note was written"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                }
+            },
+            "description": "Retrieve a note"
+        },
+        "task_extended": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task id"
+                },
+                "integration_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Integration ID"
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Task summary"
+                },
+                "details": {
+                    "type": "string",
+                    "description": "Task details"
+                },
+                "remote_id": {
+                    "type": "string",
+                    "description": "Remote ID of the task in the external system"
+                },
+                "remote_alternate_id": {
+                    "type": "string",
+                    "description": "Alternate Remote ID of the task in the external system"
+                },
+                "completed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time task was completed"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Task status"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                }
+            },
+            "description": "Retrieve a task"
+        },
+        "organization_with_users": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Organization ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Organization name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user_with_dates"
+                    },
+                    "description": "Totals for each user"
+                }
+            },
+            "description": "Retrieve custom team report grouped by user"
+        },
+        "user_with_dates": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "dates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/date"
+                    },
+                    "description": "Totals for each day"
+                }
+            }
+        },
+        "date": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "date"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                }
+            }
+        },
+        "organization_with_projects": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Organization ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Organization name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/project_with_dates"
+                    },
+                    "description": "Report for projects"
+                }
+            },
+            "description": "Retrieve custom team report grouped by project"
+        },
+        "project_with_dates": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Project name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "dates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/date_with_user_activities"
+                    },
+                    "description": "Report for dates"
+                }
+            }
+        },
+        "date_with_user_activities": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "date"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user_with_activity"
+                    },
+                    "description": "Report for users"
+                }
+            }
+        },
+        "user_with_activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/task_with_activity"
+                    },
+                    "description": "Tasks"
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/note"
+                    },
+                    "description": "Notes"
+                }
+            }
+        },
+        "task_with_activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task id"
+                },
+                "integration_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Integration ID"
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Task summary"
+                },
+                "details": {
+                    "type": "string",
+                    "description": "Task details"
+                },
+                "remote_id": {
+                    "type": "string",
+                    "description": "Remote ID of the task in the external system"
+                },
+                "remote_alternate_id": {
+                    "type": "string",
+                    "description": "Alternate Remote ID of the task in the external system"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                }
+            }
+        },
+        "note": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Note ID"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Note description"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                }
+            }
+        },
+        "organization_with_dates": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Organization ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Organization name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "dates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/date_with_users"
+                    },
+                    "description": "Report for dates"
+                }
+            },
+            "description": "Retrieve custom team report grouped by date"
+        },
+        "date_with_users": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "date"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user_with_projects"
+                    },
+                    "description": "Report for users"
+                }
+            }
+        },
+        "user_with_projects": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "User name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/project_with_activity"
+                    },
+                    "description": "Report for projects"
+                }
+            }
+        },
+        "project_with_activity": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Project name"
+                },
+                "last_activity": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Last activity of user"
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Total time in seconds"
+                },
+                "activity_percent": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Percentage of time active within the time worked"
+                },
+                "tasks_duration": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total task time in seconds"
+                },
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/task_with_activity"
+                    },
+                    "description": "Tasks"
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/note"
+                    },
+                    "description": "Notes"
+                }
+            }
+        },
+        "time_edit_log": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Time edit ID"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the edit was made"
+                },
+                "starts_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time activity was started within time slot"
+                },
+                "stops_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time activity has ended"
+                },
+                "blame_user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID who created the time edit log"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID to which the time edit log belongs"
+                },
+                "project_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Project ID"
+                },
+                "task_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Task ID"
+                },
+                "action": {
+                    "type": "string",
+                    "description": "Action type"
+                },
+                "note": {
+                    "type": "string",
+                    "description": "Reason for creating the time edit log"
+                }
+            },
+            "description": "Retrieve time edit logs"
+        },
+        "team_payment": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Payment ID"
+                },
+                "next_payment_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Date and time next payment is made"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the team payment was made"
+                },
+                "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Start date period for team payment"
+                },
+                "stop_date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "End date period for team payment"
+                },
+                "tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time worked in seconds"
+                },
+                "blame_user_id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "User ID who made the payment"
+                },
+                "payment_type": {
+                    "type": "string",
+                    "description": "Payment type"
+                },
+                "payment_complete": {
+                    "type": "boolean",
+                    "description": "Payment completion status"
+                },
+                "paid_via_payroll": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string",
+                    "description": "Payment amount"
+                },
+                "currency": {
+                    "type": "string",
+                    "description": "Payment currency"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/team_payment_detail"
+                    },
+                    "description": "Team payment details"
+                }
+            },
+            "description": "Retrieve team payments"
+        },
+        "team_payment_detail": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Payment detail ID"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "tracked": {
+                    "type": "string"
+                },
+                "pay_rate": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "payment_type": {
+                    "type": "string"
+                },
+                "payment_complete": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

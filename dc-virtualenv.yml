@@ -1,0 +1,24 @@
+version: '3.7'
+
+services:
+  redis:
+    image: redis:3-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: redis-cli ping
+    volumes:
+    - ./redis/data:/data
+    ports:
+      - 8379:6379
+
+  db:
+    image: postgres:9.6-alpine
+    healthcheck:
+      test: pg_isready || exit 1
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    ports:
+      - 8432:5432
