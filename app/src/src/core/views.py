@@ -2,25 +2,25 @@ import json
 from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
+from pprint import pprint
+from typing import Dict, Union
 
 import requests
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import SuspiciousOperation, PermissionDenied
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
-from .mixer import ApiMixer
+from requests import RequestException
+from .mixer import ApiMixer, Parameter, FORMATS
 from .models import AccessAttemptFailure
 
 
-def rev(d: dict) -> dict:
-    return {v: k for k, v in d.items()}
-
-
+# save ApiMixer instance in memory, so that we don't regenerate mappings on each request
 @lru_cache(maxsize=32)
 def get_mixer(seed: int) -> ApiMixer:
     swagger = Path(__file__).parent / 'data' / 'hubstaff.v1.swagger.json'
@@ -42,6 +42,64 @@ class SwaggerView(View):
 session = requests.Session()
 
 
+def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]:
+    """ Converts user's request to dict {Parameter: value} """
+
+    permuted_path = request.path
+    permuted_method = request.method.lower()
+    permuted_format = None if request.content_type == 'text/plain' else request.content_type
+    permuted_parameters = {}
+
+    for header, value in request.headers.items():
+        permuted_parameters[
+            Parameter(permuted_path, permuted_method, permuted_format, 'header', header.lower())] = value
+
+    for post, value in request.POST.items():
+        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'formData', post)] = value
+
+    for get, value in request.GET.items():
+        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'query', get)] = value
+
+    if permuted_format:
+        try:
+            fmt = next(filter(lambda fmt: fmt.name == permuted_format, FORMATS))
+        except StopIteration:
+            raise ValueError(f'Unknown content-type: "{permuted_format}"')
+
+        try:
+            data = fmt.decode(request.body) if request.body else {}
+        except Exception:
+            raise ValueError(f'Could not decode "{fmt.name}": {request.body}')
+
+        if not isinstance(data, dict):
+            raise ValueError(f'Payload is not a dictionary: {request.body}')
+
+        for key, value in data.items():
+            permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'body', key)] = value
+
+    return permuted_parameters
+
+
+def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) -> requests.Response:
+    assert parameters, 'Missing parameters to form a request'
+    assert len({(param.path, param.method, param.format) for param in parameters}) == 1, f'Inconsistent parameters {parameters}'
+
+    first_param = next(iter(parameters.keys()))
+
+    method = first_param.method
+    path = first_param.path.format(
+        **{param.name: value for param, value in parameters.items() if param.in_ == 'path'}
+    )  # /v1/user/{id} -> /v1/user/1
+
+    return getattr(session, method)(
+        host + path,
+        headers={param.name: value for param, value in parameters.items() if param.in_ == 'header'},
+        json={param.name: value for param, value in parameters.items() if param.in_ == 'body'},
+        params={param.name: value for param, value in parameters.items() if param.in_ == 'query'},
+        timeout=(60, 60),
+    )
+
+
 @csrf_exempt
 def proxy(request, user_pk: int):
     user_pk = int(user_pk)
@@ -55,98 +113,45 @@ def proxy(request, user_pk: int):
         raise SuspiciousOperation(f'Too many attempts to access Hubstaff API with wrong credentials; '
                                   f'please wait 24h before further attempts')
 
+    # convert user's request to list of parameters
+    try:
+        permuted_parameters = _request_to_params(request)
+    except ValueError as exc:
+        return JsonResponse(status=400, data={'error': str(exc)})
+
+    # convert each parameter to original (non-mutated) one, or drop if parameter is redundant
+    parameters = {}
     mixer = get_mixer(seed=user_pk)
-
-    # retrieve original path
-    permuted_path = request.path
-    try:
-        path = rev(mixer.path_mapping)[permuted_path]
-    except KeyError:
-        raise ValueError(f'Unknown path "{permuted_path}"')
-
-    # retrieve original method
-    permuted_method = request.method.lower()
-    try:
-        method = rev(mixer.method_mapping)[(permuted_path, permuted_method)][1]
-    except KeyError:
-        raise ValueError(f'Path "{permuted_path}" does not accept "{permuted_method.upper()}" requests')
-
-    # retrieve original format
-    try:
-        # fix for Swagger UI: if payload is empty, format is 'text/plain' -> convert it to correct format
-        if request.content_type == 'text/plain':
-            permuted_format = next(
-                fmt for pth, mthd, fmt in rev(mixer.format_mapping)
-                if pth == permuted_path and mthd == permuted_method
-            )
-        else:
-            permuted_format = next(fmt for fmt in mixer.FORMATS if fmt.name == request.content_type)
-    except StopIteration:
-        raise ValueError(f'Content type "{request.content_type}" is unknown')
-    try:
-        format = rev(mixer.format_mapping)[(permuted_path, permuted_method, permuted_format)][2]
-    except KeyError:
-        raise ValueError(f'Format "{permuted_format.name}" '
-                         f'is not supported by "{permuted_method.upper()} {permuted_path}"')
-
-    # retrieve original params
-    permuted_params = []
-    for header, value in request.headers.items():
-        permuted_params.append({'in': 'header', 'name': header.lower(), 'value': value})
-
-    for post, value in request.POST.items():
-        permuted_params.append({'in': 'formData', 'name': post, 'value': value})
-
-    for get, value in request.GET.items():
-        permuted_params.append({'in': 'query', 'name': get, 'value': value})
-
-    try:
-        data = permuted_format.decode(request.body) if request.body else {}
-        if not isinstance(data, dict):
-            raise ValueError()
-    except Exception:
-        raise ValueError(f'Could not decode {permuted_format.name}: {request.body}')
-
-    for key, value in data.items():
-        permuted_params.append({'in': 'body', 'name': key, 'value': value})
-
-    params = []
-    rev_parameter_mapping = rev(mixer.parameter_mapping)
-    for p in permuted_params:
+    for permuted_parameter, value in permuted_parameters.items():
         try:
-            params.append({
-                **p,
-                'in': rev_parameter_mapping[(permuted_path, permuted_method, p['in'], p['name'])][2],
-                'name': rev_parameter_mapping[(permuted_path, permuted_method, p['in'], p['name'])][3],
-            })
-        except KeyError:
-            if p['in'] == 'header':
-                print(f'Skipping header {p}')
-            else:
-                raise ValueError(f'Param {p} is not valid for "{permuted_method.upper()} {permuted_path}"')
+            parameters[mixer.reverse(permuted_parameter)] = value
+        except ValueError:
+            if permuted_parameter.in_ == 'header':
+                continue  # we ignore redundant headers
 
-    # construct request to original API
-    path = path.format(**{p['name']: p['value'] for p in params if p['in'] == 'path'})  # /v1/user/{id} -> /v1/user/1
-    data = {p['name']: p['value'] for p in params if p['in'] == 'formData'}
-    query = {p['name']: p['value'] for p in params if p['in'] == 'query'}
-    headers = {p['name']: p['value'] for p in params if p['in'] == 'header'}
+            return JsonResponse(status=400, data={
+                'error': f'Unexpected: {permuted_parameter.method.upper()} {permuted_parameter.path} '
+                         f'{permuted_parameter.in_.upper()} {permuted_parameter.name}={value}'})
 
-    print(f'Input: {permuted_method.upper()} {permuted_path}')
-    for param in permuted_params:
-        print(f'\t{param}')
-    print(f'Output: {method.upper()} {path}')
-    # print(f'\theaders={headers}, json={data}, params={query}')
-    for param in params:
-        print(f'\t{param}')
+    print('IN:')
+    pprint(permuted_parameters)
+    print('OUT:')
+    pprint(parameters)
 
-    response = getattr(session, method)(
-        'https://' + mixer.swagger['host'] + path,
-        headers=headers, json=data, params=query, timeout=(60, 60),
-    )
+    fmt = next(filter(lambda fmt: fmt.name == next(iter(permuted_parameters)).format, FORMATS))
+
+    # make a request with original (pure) parameters
+    try:
+        response = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
+    except RequestException as exc:
+        return HttpResponse(status=500, content=fmt.encode({'error': f'API error: {exc}'}), content_type=fmt.name)
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = response.text
+
     if response.status_code == 401:
         AccessAttemptFailure.objects.create(user=user)
-    response.raise_for_status()
 
-    data = response.json()
-
-    return HttpResponse(format.encode(data), content_type=format.name)
+    return HttpResponse(status=response.status_code, content=fmt.encode(payload), content_type=fmt.name)
