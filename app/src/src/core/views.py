@@ -3,6 +3,7 @@ import logging
 from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
+from pprint import pformat
 from typing import Dict, Union
 
 import requests
@@ -54,7 +55,7 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
     permuted_parameters = {}
 
     for header, value in request.headers.items():
-        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'header', header.lower())] = value
+        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'header', header)] = value
 
     for post, value in request.POST.items():
         permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'formData', post)] = value
@@ -136,8 +137,8 @@ def proxy(request, user_pk: int):
                 'error': f'Unexpected: {permuted_parameter.method.upper()} {permuted_parameter.path} '
                          f'{permuted_parameter.in_.upper()} {permuted_parameter.name}={value}'})
 
-    log.info(f'IN: {permuted_parameters}')
-    log.info(f'OUT: {parameters}')
+    log.info(f'IN:\n{pformat(permuted_parameters)}')
+    log.info(f'OUT:\n{pformat(parameters)}')
 
     fmt = next(filter(lambda fmt: fmt.name == next(iter(permuted_parameters)).format, FORMATS))
 
