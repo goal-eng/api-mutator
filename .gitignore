@@ -8,5 +8,4 @@ docker-compose.yml
 redis/
 db/
 media/
-src
 

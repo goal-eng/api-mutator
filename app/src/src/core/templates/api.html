@@ -1,18 +1,33 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+    <link rel="stylesheet" type="text/css" href="{% static 'swagger-ui-dist/swagger-ui.css' %}" >
+{% endblock %}
 
 {% block content %}
-    <div class="h3 mt-4">Here is your personalized Hubstaff API:</div>
+    <div id="swagger-ui"></div>
 
-    <div class="swagger-section" data-swagger-url="/swagger.json">
+    <script src="{% static 'swagger-ui-dist/swagger-ui-bundle.js' %}"></script>
+    <script src="{% static 'swagger-ui-dist/swagger-ui-standalone-preset.js' %}"></script>
 
-        <div class="swagger-ui-wrap" id="auth-wrapper">
-            <div id="auth_container"></div>
-        </div>
-        <div class="swagger-ui-wrap" id="message-bar"></div>
-        <div class="swagger-ui-wrap" id="swagger-ui-container"></div>
-    </div>
+    <script>
+        const ui = SwaggerUIBundle({
+            url: "/swagger.json",
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+              SwaggerUIBundle.presets.apis,
+              SwaggerUIStandalonePreset
+            ],
+            plugins: [
+              SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout",
+            defaultModelsExpandDepth: -1,
+            supportedSubmitMethods: []
+          })
 
-    <link rel="stylesheet" media="screen" href="https://d2elkgkdx2cp5d.cloudfront.net/assets/swagger-ui-36a82b56b90d7a24afafd2dd47522fd62df63087cf740b8348c4abcd2241f5c4.css" />
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://d2elkgkdx2cp5d.cloudfront.net/assets/swagger-ui-30604c4b5dc585b0d80e8f935a753e66a6dbe1333f5804e6a28d952c2784f179.js"></script>
+          window.ui = ui
+    </script>
 {% endblock %}
