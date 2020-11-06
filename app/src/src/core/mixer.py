@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Iterable, Optional
 
 import xmltodict
+import yaml
 from dict2xml import dict2xml
 
 thread_lock = threading.Lock()
@@ -19,7 +20,7 @@ synonyms = json.loads((Path(__file__).parent / 'data' / 'synonyms.json').read_te
 Format = namedtuple('Format', field_names=['name', 'encode', 'decode'])
 FORMATS = [
     Format(name='application/json', decode=json.loads, encode=json.dumps),
-    # Format(name='application/x-yaml', decode=yaml.load, encode=yaml.dump),
+    Format(name='application/x-yaml', decode=yaml.load, encode=yaml.dump),
     Format(name='application/xml', decode=xmltodict.parse, encode=dict2xml),
 ]
 METHODS = ['get', 'put', 'post', 'patch']
@@ -100,6 +101,32 @@ def permute_formats(swagger: dict, _):
 def permute_methods(swagger: dict, _):
     """
     Replaces methods of swagger paths with random ones and modifies locations of parameters according to the methods.
+
+    Example:
+        "/v1/users": {
+            "get": {  # <---- !!!
+                "parameters": [
+                        {
+                            "in": "query",  # <---- !!!
+                            "name": "organization_memberships",
+                            "description": "Include the organization memberships for each user",
+                            "type": "boolean",
+                            "required": false
+                        },
+
+        --->
+
+        "/v1/users": {
+            "post": {  # <---- !!!
+                "parameters": [
+                        {
+                            "in": "body",  # <---- !!!
+                            "name": "organization_memberships",
+                            "description": "Include the organization memberships for each user",
+                            "type": "boolean",
+                            "required": false
+                        },
+
     """
     for path, methods in swagger['paths'].items():
         methods_pool = random.sample(METHODS, k=len(METHODS))
@@ -120,6 +147,27 @@ def permute_methods(swagger: dict, _):
 def permute_locations(swagger: dict, _):
     """
     Replaces locations of parameters (i.e. moves parameter from header to query string etc).
+
+    Example:
+        "parameters": [
+            {
+                "in": "query",  # <---- !!!
+                "name": "organization_memberships",
+                "description": "Include the organization memberships for each user",
+                "type": "boolean",
+                "required": false
+            },
+
+        --->
+
+        "parameters": [
+            {
+                "in": "header",  # <---- !!!
+                "name": "organization_memberships",
+                "description": "Include the organization memberships for each user",
+                "type": "boolean",
+                "required": false
+            },
     """
     for _, methods in swagger['paths'].items():
         for method, description in methods.items():
@@ -134,6 +182,13 @@ def permute_locations(swagger: dict, _):
 
 @dataclass(frozen=True)
 class Parameter:
+    """
+    A class representing 1 particular configuration unit from swagger file.
+    Examples:
+        (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
+        (path='/v1/users/{id}', method='get', format='json', in_='header', name='Auth-Token')
+        (path='/v1/users/{id}', method='get', format='json', in_='query', name='id')
+    """
     path: str
     method: Optional[str]
     format: Optional[str]
@@ -141,7 +196,12 @@ class Parameter:
     name: Optional[str]
 
     def __eq__(self, other) -> bool:
-        """ Parameters are equal if their fields are equal. None value matches every other value. """
+        """
+        Parameters are equal if their fields are equal. None value matches every other value (i.e. None == wildcard).
+        These are equal:
+            (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
+            (path='/v1/users/{id}', method='get', format='json', in_=None, name=None)
+        """
         for field in self.__annotations__:
             val1 = getattr(self, field)
             val2 = getattr(other, field)
@@ -170,13 +230,23 @@ class ApiMixer:
             for permutation in permutations:
                 permutation(self.permuted_swagger, self.seed)
 
-        # generate mappings from old parameters to new ones
+        # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
         self.permuted_parameters = self.as_parameters(self.permuted_swagger)
 
     @classmethod
     def as_parameters(cls, swagger: dict) -> List[Parameter]:
-        """ TODO """
+        """
+        Coverts a hierarchical swagger definition to a list of parameters.
+        Example output: [
+            # parameters from /v1/users/{id} endpoint:
+            Parameter(path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
+            Parameter(path='/v1/users/{id}', method='get', format='json', in_='header', name='Auth-Token')
+            Parameter(path='/v1/users/{id}', method='get', format='json', in_='query', name='id'),
+            # parameters for other endpoints:
+            ...
+        ]
+        """
         parameters = []
 
         for path, methods in swagger['paths'].items():
