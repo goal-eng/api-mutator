@@ -1,8 +1,8 @@
 import json
+import logging
 from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
-from pprint import pprint
 from typing import Dict, Union
 
 import requests
@@ -18,6 +18,9 @@ from django.views.generic.base import View
 from requests import RequestException
 from .mixer import ApiMixer, Parameter, FORMATS
 from .models import AccessAttemptFailure
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__file__)
 
 
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
@@ -51,8 +54,7 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
     permuted_parameters = {}
 
     for header, value in request.headers.items():
-        permuted_parameters[
-            Parameter(permuted_path, permuted_method, permuted_format, 'header', header.lower())] = value
+        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'header', header.lower())] = value
 
     for post, value in request.POST.items():
         permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'formData', post)] = value
@@ -81,6 +83,7 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
 
 
 def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) -> requests.Response:
+    """ Uses the list of parameters to make a request to host and returns response """
     assert parameters, 'Missing parameters to form a request'
     assert len({(param.path, param.method, param.format) for param in parameters}) == 1, f'Inconsistent parameters {parameters}'
 
@@ -133,10 +136,8 @@ def proxy(request, user_pk: int):
                 'error': f'Unexpected: {permuted_parameter.method.upper()} {permuted_parameter.path} '
                          f'{permuted_parameter.in_.upper()} {permuted_parameter.name}={value}'})
 
-    print('IN:')
-    pprint(permuted_parameters)
-    print('OUT:')
-    pprint(parameters)
+    log.info(f'IN: {permuted_parameters}')
+    log.info(f'OUT: {parameters}')
 
     fmt = next(filter(lambda fmt: fmt.name == next(iter(permuted_parameters)).format, FORMATS))
 
