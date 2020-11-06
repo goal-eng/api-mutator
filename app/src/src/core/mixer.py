@@ -138,7 +138,7 @@ def permute_methods(swagger: dict, _):
         for method, description in swagger['paths'][path].items():
             parameters = description['parameters']
             for parameter in parameters:
-                if method == 'get' and parameter['in'] == ['formData', 'body']:
+                if method == 'get' and parameter['in'] in ['formData', 'body']:
                     parameter['in'] = 'query'
                 elif method in ['post', 'patch', 'put'] and parameter['in'] in ['query']:
                     parameter['in'] = 'body'
