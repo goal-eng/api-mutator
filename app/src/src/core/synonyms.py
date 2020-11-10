@@ -1,4 +1,4 @@
-{
+SYNONYMS = {
   "auth": ["oauth", "login", "signin"],
   "users": ["user", "users", "employee", "employees", "account", "accounts", "member", "members", "staff", "people"],
   "projects": ["task", "tasks", "subprojects", "subproject"],

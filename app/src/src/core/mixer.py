@@ -12,9 +12,9 @@ from typing import List, Iterable, Optional
 import xmltodict
 import yaml
 from dict2xml import dict2xml
+from src.core.synonyms import SYNONYMS
 
 thread_lock = threading.Lock()
-synonyms = json.loads((Path(__file__).parent / 'data' / 'synonyms.json').read_text())
 
 
 Format = namedtuple('Format', field_names=['name', 'encode', 'decode'])
@@ -51,7 +51,7 @@ def permute_paths(swagger: dict, seed: int):
                 permuted_part = part_to_name.get(part)
                 if not permuted_part:
 
-                    for synonym in random.sample(synonyms[part], k=len(synonyms[part])):
+                    for synonym in random.sample(SYNONYMS[part], k=len(SYNONYMS[part])):
                         if synonym not in part_to_name.values():
                             permuted_part = part_to_name.setdefault(part, synonym)
                             break
