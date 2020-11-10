@@ -34,6 +34,9 @@ def permute_paths(swagger: dict, seed: int):
     rnd = random.Random(seed)
     part_to_name = {}  # mapping from parts to dictionary words (common for all endpoints)
 
+    # permute synonyms
+    synonyms = {key: rnd.sample(values + [key], k=len(values)+1) for key, values in SYNONYMS.items()}
+
     def permute_path(path: str) -> str:
         parts = path.split('/')
         permuted_parts = []
@@ -44,11 +47,10 @@ def permute_paths(swagger: dict, seed: int):
                 permuted_part = f'v{seed}'
             elif part.startswith('{') and part.endswith('}'):  # don't touch parametrized parts
                 permuted_part = part
-            else:  # otherwise just replace with part with dictionary word
+            else:  # otherwise just replace this part with dictionary word
                 permuted_part = part_to_name.get(part)
                 if not permuted_part:
-
-                    for synonym in rnd.sample(SYNONYMS[part], k=len(SYNONYMS[part])):
+                    for synonym in synonyms[part]:
                         if synonym not in part_to_name.values():
                             permuted_part = part_to_name.setdefault(part, synonym)
                             break
