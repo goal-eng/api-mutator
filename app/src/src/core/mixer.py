@@ -1,7 +1,6 @@
 import json
 import random
 import re
-import threading
 from argparse import ArgumentParser
 from collections import namedtuple
 from copy import deepcopy
@@ -13,9 +12,6 @@ import xmltodict
 import yaml
 from dict2xml import dict2xml
 from src.core.synonyms import SYNONYMS
-
-thread_lock = threading.Lock()
-
 
 Format = namedtuple('Format', field_names=['name', 'encode', 'decode'])
 FORMATS = [
@@ -35,6 +31,7 @@ def permute_paths(swagger: dict, seed: int):
         /v1/users/{id}/projects -> /v231/persons/{id}/tasks
     """
 
+    rnd = random.Random(seed)
     part_to_name = {}  # mapping from parts to dictionary words (common for all endpoints)
 
     def permute_path(path: str) -> str:
@@ -51,7 +48,7 @@ def permute_paths(swagger: dict, seed: int):
                 permuted_part = part_to_name.get(part)
                 if not permuted_part:
 
-                    for synonym in random.sample(SYNONYMS[part], k=len(SYNONYMS[part])):
+                    for synonym in rnd.sample(SYNONYMS[part], k=len(SYNONYMS[part])):
                         if synonym not in part_to_name.values():
                             permuted_part = part_to_name.setdefault(part, synonym)
                             break
@@ -65,7 +62,7 @@ def permute_paths(swagger: dict, seed: int):
     swagger['paths'] = {permute_path(path): methods for path, methods in swagger['paths'].items()}
 
 
-def permute_formats(swagger: dict, _):
+def permute_formats(swagger: dict, seed: int):
     """
     Replaces request & response formats for all endpoints.
 
@@ -91,14 +88,15 @@ def permute_formats(swagger: dict, _):
                     "application/xml"
                 ],
     """
-    fmt = random.choice(FORMATS)
+    rnd = random.Random(seed)
+    fmt = rnd.choice(FORMATS)
 
     for path, methods in swagger['paths'].items():
         for method, description in methods.items():
             description['produces'] = description['consumes'] = [fmt.name]
 
 
-def permute_methods(swagger: dict, _):
+def permute_methods(swagger: dict, seed: int):
     """
     Replaces methods of swagger paths with random ones and modifies locations of parameters according to the methods.
 
@@ -128,8 +126,10 @@ def permute_methods(swagger: dict, _):
                         },
 
     """
+    rnd = random.Random(seed)
+
     for path, methods in swagger['paths'].items():
-        methods_pool = random.sample(METHODS, k=len(METHODS))
+        methods_pool = rnd.sample(METHODS, k=len(METHODS))
         swagger['paths'][path] = {
             methods_pool.pop(): description for _, description in methods.items()
         }
@@ -144,7 +144,7 @@ def permute_methods(swagger: dict, _):
                     parameter['in'] = 'body'
 
 
-def permute_locations(swagger: dict, _):
+def permute_locations(swagger: dict, seed: int):
     """
     Replaces locations of parameters (i.e. moves parameter from header to query string etc).
 
@@ -169,10 +169,12 @@ def permute_locations(swagger: dict, _):
                 "required": false
             },
     """
+    rnd = random.Random(seed)
+
     for _, methods in swagger['paths'].items():
         for method, description in methods.items():
             for parameter in description['parameters']:
-                if random.choice((True, False)):  # decide whether to permute this time or not
+                if rnd.choice((True, False)):  # decide whether to permute this time or not
                     parameter['in'] = {
                         'query': 'header',
                         'body': 'header',
@@ -225,10 +227,8 @@ class ApiMixer:
 
         # apply permutations on swagger copy
         self.permuted_swagger = deepcopy(self.swagger)
-        with thread_lock:
-            random.seed(self.seed)
-            for permutation in permutations:
-                permutation(self.permuted_swagger, self.seed)
+        for permutation in permutations:
+            permutation(self.permuted_swagger, self.seed)
 
         # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
