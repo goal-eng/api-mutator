@@ -95,7 +95,8 @@ def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) 
         **{param.name: value for param, value in parameters.items() if param.in_ == 'path'}
     )  # /v1/user/{id} -> /v1/user/1
 
-    return getattr(session, method)(
+    return session.request(
+        method,
         host + path,
         headers={param.name: value for param, value in parameters.items() if param.in_ == 'header'},
         json={param.name: value for param, value in parameters.items() if param.in_ == 'body'},
