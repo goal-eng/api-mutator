@@ -6,6 +6,44 @@
 {% endblock %}
 
 {% block content %}
+
+    <div style="padding: 20px;">
+
+      <h2>Hubstaff API v1</h2>
+      <p>
+        Create an app and get app token on <a href="https://app.hubstaff.com/developer/my_apps" target="_blank">https://app.hubstaff.com/developer/my_apps</a>.
+        <br>
+        Follow instructions on <a href="https://app.hubstaff.com/developer/authentication" target="_blank">https://app.hubstaff.com/developer/authentication</a>.
+      </p>
+
+      {% comment %}
+        <h2>Hubstaff API v2</h2>
+        <p>
+          Follow instructions to get personal access token:
+          <a href="https://developer.hubstaff.com/personal_access_tokens" target="_blank">https://developer.hubstaff.com/personal_access_tokens</a>
+        </p>
+
+
+        You need to:
+        <pre>
+          import requests
+
+          config = requests.get('https://account.hubstaff.com/.well-known/openid-configuration').json()
+          token_endpoint = config['token_endpoint']
+
+          # set up a refresh token manually on https://developer.hubstaff.com/personal_access_tokens
+          refresh_token = 'your-refresh-token'
+          access_data = requests.post(token_endpoint, data={'grant_type': 'refresh_token', 'refresh_token': refresh_token}).json()
+          access_token = access_data['access_token']
+          print('My access token:', access_token)
+
+        </pre>
+      {% endcomment %}
+
+      Below is your very personalized hubstaff API.
+
+    </div>
+
     <div id="swagger-ui"></div>
 
     <script src="{% static 'swagger-ui-dist/swagger-ui-bundle.js' %}"></script>
