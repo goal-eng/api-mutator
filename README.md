@@ -3,6 +3,17 @@ hubstaff-api-mutator
 
 A proxy which provides a tangled API to candidates and sends requests back and forth to Hubstaff.
 
+The `ApiMixer` class is capable of reading swagger file and generating "permuted" swagger file based on
+set of permutation functions and seed for randomizer. For each user, his ID is used as mixer's seed,
+and all user's permuted paths start with `/v{user_id}/...`, so that we may easily test users' solutions.
+
+To start the permutator, just launch django as usual and create an account for each candidate. Candidates
+will be able to login and see their personalized Hubstaff API definitions.
+
+For better understanding under-the-hood logic, please see `ApiMixer`'s docstring. Probably.
+
+
+
 Skeleton of this project was generated with `cookiecutter-rt-django`, which sometimes gets upgrades that are easy to retrofit into already older projects.
 
 Base requirements
