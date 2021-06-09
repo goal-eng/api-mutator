@@ -27,8 +27,7 @@ log = logging.getLogger(__file__)
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
 @lru_cache(maxsize=32)
 def get_mixer(seed: int) -> ApiMixer:
-    swagger = Path(__file__).parent / 'data' / 'hubstaff.v1.swagger.json'
-    return ApiMixer(json.loads(swagger.read_text()), seed)
+    return ApiMixer(json.loads(settings.SWAGGER_FILE_PATH.read_text()), seed)
 
 
 class ApiDescriptionView(TemplateView):
@@ -95,11 +94,13 @@ def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) 
         **{param.name: value for param, value in parameters.items() if param.in_ == 'path'}
     )  # /v1/user/{id} -> /v1/user/1
 
-    return getattr(session, method)(
+    return session.request(
+        method,
         host + path,
         headers={param.name: value for param, value in parameters.items() if param.in_ == 'header'},
         json={param.name: value for param, value in parameters.items() if param.in_ == 'body'},
         params={param.name: value for param, value in parameters.items() if param.in_ == 'query'},
+        data={param.name: value for param, value in parameters.items() if param.in_ == 'formData'},
         timeout=(60, 60),
     )
 
@@ -128,9 +129,13 @@ def proxy(request, user_pk: int):
     mixer = get_mixer(seed=user_pk)
     for permuted_parameter, value in permuted_parameters.items():
         try:
-            parameters[mixer.reverse(permuted_parameter)] = value
+            log.debug(f'Permuted parameter: {permuted_parameter}')
+            restored_parameter = mixer.reverse(permuted_parameter)
+            log.debug(f'Restored parameter: {restored_parameter}')
+            parameters[restored_parameter] = value
         except ValueError:
             if permuted_parameter.in_ == 'header':
+                log.debug(f'Ignoring unexpected header {permuted_parameter}')
                 continue  # we ignore redundant headers
 
             return JsonResponse(status=400, data={

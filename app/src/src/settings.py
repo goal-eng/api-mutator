@@ -1,16 +1,11 @@
-"""
-Django settings for src project.
-"""
+import logging
+from pathlib import Path
 
-import datetime as dt
 import environ
 import sentry_sdk
-import logging
-
 from django.urls import reverse_lazy
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
-
 
 root = environ.Path(__file__) - 2
 env = environ.Env(
@@ -100,7 +95,6 @@ LOGIN_REDIRECT_URL = reverse_lazy('main')
 
 WSGI_APPLICATION = 'src.wsgi.application'
 
-
 # Database
 
 DATABASES = {
@@ -168,7 +162,7 @@ else:
 
 # how many failed attempts it is allowed to do before we block this user
 HUBSTAFF_MAX_FAILED_BEFORE_BLOCK = 3
-
+SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v1.swagger.json'
 
 if env('SENTRY_DSN', default=''):
     sentry_logging = LoggingIntegration(
@@ -180,3 +174,27 @@ if env('SENTRY_DSN', default=''):
         dsn=env('SENTRY_DSN', default=''),
         integrations=[DjangoIntegration(), sentry_logging]
     )
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '\t'.join(['%(levelname).1s', '%(asctime)s', '%(process)d', '%(message)s']),
+        }
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            # 'propagate': False #this will do the trick
+        },
+    }
+}

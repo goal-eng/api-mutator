@@ -1,21 +1,20 @@
 import json
 import random
 import re
-import threading
 from argparse import ArgumentParser
 from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
+from logging import getLogger
 from pathlib import Path
-from typing import List, Iterable, Optional
+from typing import Iterable, List, Optional
 
 import xmltodict
 import yaml
 from dict2xml import dict2xml
+from src.core.synonyms import SYNONYMS
 
-thread_lock = threading.Lock()
-synonyms = json.loads((Path(__file__).parent / 'data' / 'synonyms.json').read_text())
-
+log = getLogger(__name__)
 
 Format = namedtuple('Format', field_names=['name', 'encode', 'decode'])
 FORMATS = [
@@ -35,7 +34,11 @@ def permute_paths(swagger: dict, seed: int):
         /v1/users/{id}/projects -> /v231/persons/{id}/tasks
     """
 
+    rnd = random.Random(seed)
     part_to_name = {}  # mapping from parts to dictionary words (common for all endpoints)
+
+    # permute synonyms
+    synonyms = {key: rnd.sample(values + [key], k=len(values) + 1) for key, values in SYNONYMS.items()}
 
     def permute_path(path: str) -> str:
         parts = path.split('/')
@@ -47,11 +50,16 @@ def permute_paths(swagger: dict, seed: int):
                 permuted_part = f'v{seed}'
             elif part.startswith('{') and part.endswith('}'):  # don't touch parametrized parts
                 permuted_part = part
-            else:  # otherwise just replace with part with dictionary word
+            else:  # otherwise just replace this part with dictionary word
                 permuted_part = part_to_name.get(part)
                 if not permuted_part:
+                    if part not in synonyms:
+                        log.warning(f'No synonyms defined for "{part}"')
+                        synonyms_for_part = [part]
+                    else:
+                        synonyms_for_part = synonyms[part]
 
-                    for synonym in random.sample(synonyms[part], k=len(synonyms[part])):
+                    for synonym in synonyms_for_part:
                         if synonym not in part_to_name.values():
                             permuted_part = part_to_name.setdefault(part, synonym)
                             break
@@ -65,7 +73,7 @@ def permute_paths(swagger: dict, seed: int):
     swagger['paths'] = {permute_path(path): methods for path, methods in swagger['paths'].items()}
 
 
-def permute_formats(swagger: dict, _):
+def permute_formats(swagger: dict, seed: int):
     """
     Replaces request & response formats for all endpoints.
 
@@ -91,14 +99,15 @@ def permute_formats(swagger: dict, _):
                     "application/xml"
                 ],
     """
-    fmt = random.choice(FORMATS)
+    rnd = random.Random(seed)
+    fmt = rnd.choice(FORMATS)
 
     for path, methods in swagger['paths'].items():
         for method, description in methods.items():
             description['produces'] = description['consumes'] = [fmt.name]
 
 
-def permute_methods(swagger: dict, _):
+def permute_methods(swagger: dict, seed: int):
     """
     Replaces methods of swagger paths with random ones and modifies locations of parameters according to the methods.
 
@@ -128,23 +137,24 @@ def permute_methods(swagger: dict, _):
                         },
 
     """
+    rnd = random.Random(seed)
+
     for path, methods in swagger['paths'].items():
-        methods_pool = random.sample(METHODS, k=len(METHODS))
+        methods_pool = rnd.sample(METHODS, k=len(METHODS))
         swagger['paths'][path] = {
             methods_pool.pop(): description for _, description in methods.items()
         }
 
-        # if we change GET to POST, then all parameters from "query" should go to "formData" etc
+        # if we change GET to POST, then all parameters from "query" should go to "body" etc
         for method, description in swagger['paths'][path].items():
-            parameters = description['parameters']
-            for parameter in parameters:
-                if method == 'get' and parameter['in'] in ['formData', 'body']:
+            for parameter in description.get('parameters', []):
+                if method == 'get' and parameter['in'] != 'header':
                     parameter['in'] = 'query'
-                elif method in ['post', 'patch', 'put'] and parameter['in'] in ['query']:
+                elif method in ['post', 'patch', 'put'] and parameter['in'] != 'header':
                     parameter['in'] = 'body'
 
 
-def permute_locations(swagger: dict, _):
+def permute_locations(swagger: dict, seed: int):
     """
     Replaces locations of parameters (i.e. moves parameter from header to query string etc).
 
@@ -169,10 +179,12 @@ def permute_locations(swagger: dict, _):
                 "required": false
             },
     """
+    rnd = random.Random(seed)
+
     for _, methods in swagger['paths'].items():
         for method, description in methods.items():
-            for parameter in description['parameters']:
-                if random.choice((True, False)):  # decide whether to permute this time or not
+            for parameter in description.get('parameters', []):
+                if rnd.choice((True, False)):  # decide whether to permute this time or not
                     parameter['in'] = {
                         'query': 'header',
                         'body': 'header',
@@ -203,8 +215,10 @@ class Parameter:
             (path='/v1/users/{id}', method='get', format='json', in_=None, name=None)
         """
         for field in self.__annotations__:
-            val1 = getattr(self, field)
-            val2 = getattr(other, field)
+            # we do case-insensitive comparison bc case may change
+            # (field name will be capitalized if transformed into header, and vice versa)
+            val1 = getattr(self, field).lower()
+            val2 = getattr(other, field).lower()
 
             if not (val1 == val2 or val1 is None or val2 is None):
                 return False
@@ -216,19 +230,40 @@ class ApiMixer:
     """
     Given any dictionary in Swagger format, performs random substitutions of specific fields.
     "Randomness" is consistent across runs and depends only on seed.
+
+    Permutation is achieved by following steps:
+    1) Swagger file is parsed and converted into list of Parameters.
+       Parameter is just a tuple of path, method, format, value location, and value itself:
+       (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
+    2) A permuted list of parameters is generated by applying "permutations" - functions
+       which take single Parameter and transform it to another Parameter.
+    3) In the end we have list of original parameters and s probably convertedimilar list with those parameters
+       after permutations, which is 1-to-1 mapping (mapping is done by indexes, i.e.
+       parameters[i] <---> permuted_parameters[i]).
+    4) Now, when a request comes to the application, it is parsed to a set of permuted
+       parameters, those are converted back to original parameters using the mapping from step 3,
+       and original parameters are used to construct "real" request to Hubstaff API.
+    5) Response from Hubstaff API is returned back to user.
     """
 
-    def __init__(self, swagger: dict, seed: int, permutations: Iterable[callable] = (
-            permute_paths, permute_formats, permute_methods, permute_locations)):
+    def __init__(
+        self,
+        swagger: dict,
+        seed: int,
+        permutations: Iterable[callable] = (
+            permute_paths,
+            permute_formats,
+            permute_methods,
+            permute_locations,
+        )
+    ):
         self.swagger = swagger
         self.seed = seed
 
         # apply permutations on swagger copy
         self.permuted_swagger = deepcopy(self.swagger)
-        with thread_lock:
-            random.seed(self.seed)
-            for permutation in permutations:
-                permutation(self.permuted_swagger, self.seed)
+        for permutation in permutations:
+            permutation(self.permuted_swagger, self.seed)
 
         # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
@@ -251,8 +286,14 @@ class ApiMixer:
 
         for path, methods in swagger['paths'].items():
             for method, description in methods.items():
-                for parameter in description['parameters']:
-                    parameters.append(Parameter(path, method, description['produces'][0], parameter['in'], parameter['name']))
+
+                if 'parameters' not in description:
+                    # if no parameters for this endpoint, we just create a wildcard dummy parameter,
+                    # so that we remember path, method and format
+                    parameters.append(Parameter(path, method, description['produces'][0], None, None))
+                else:
+                    for parameter in description['parameters']:
+                        parameters.append(Parameter(path, method, description['produces'][0], parameter['in'], parameter['name']))
 
         return parameters
 
