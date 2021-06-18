@@ -2,7 +2,6 @@ import json
 import logging
 from datetime import timedelta
 from functools import lru_cache
-from pathlib import Path
 from pprint import pformat
 from typing import Dict, Union
 
@@ -82,7 +81,7 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
     return permuted_parameters
 
 
-def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) -> requests.Response:
+def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) -> requests.Request:
     """ Uses the list of parameters to make a request to host and returns response """
     assert parameters, 'Missing parameters to form a request'
     assert len({(param.path, param.method, param.format) for param in parameters}) == 1, f'Inconsistent parameters {parameters}'
@@ -94,14 +93,13 @@ def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) 
         **{param.name: value for param, value in parameters.items() if param.in_ == 'path'}
     )  # /v1/user/{id} -> /v1/user/1
 
-    return session.request(
+    return requests.Request(
         method,
         host + path,
         headers={param.name: value for param, value in parameters.items() if param.in_ == 'header'},
         json={param.name: value for param, value in parameters.items() if param.in_ == 'body'},
         params={param.name: value for param, value in parameters.items() if param.in_ == 'query'},
         data={param.name: value for param, value in parameters.items() if param.in_ == 'formData'},
-        timeout=(60, 60),
     )
 
 
@@ -148,8 +146,10 @@ def proxy(request, user_pk: int):
     fmt = next(filter(lambda fmt: fmt.name == next(iter(permuted_parameters)).format, FORMATS))
 
     # make a request with original (pure) parameters
+    request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
     try:
-        response = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
+        prepared_request = session.prepare_request(request)
+        response = session.send(prepared_request, timeout=(60, 60))
     except RequestException as exc:
         return HttpResponse(status=500, content=fmt.encode({'error': f'API error: {exc}'}), content_type=fmt.name)
 

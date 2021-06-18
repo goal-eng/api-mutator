@@ -239,7 +239,7 @@ class ApiMixer:
        which take single Parameter and transform it to another Parameter.
     3) In the end we have list of original parameters and s probably convertedimilar list with those parameters
        after permutations, which is 1-to-1 mapping (mapping is done by indexes, i.e.
-       parameters[i] <---> permuted_parameters[i]).
+       parameters[i] ---> permuted_parameters[i]).
     4) Now, when a request comes to the application, it is parsed to a set of permuted
        parameters, those are converted back to original parameters using the mapping from step 3,
        and original parameters are used to construct "real" request to Hubstaff API.
