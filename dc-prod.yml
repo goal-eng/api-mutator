@@ -1,17 +1,17 @@
 version: '3.7'
 
 services:
-  redis:
-    image: 'redis:3-alpine'
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: redis-cli ping
-    volumes:
-      - ./redis/data:/data
-    logging: &logging
-      driver: journald
-      options:
-        tag: '{{.Name}}'
+  # redis:
+  #   image: 'redis:3-alpine'
+  #   command: redis-server --appendonly yes
+  #   healthcheck:
+  #     test: redis-cli ping
+  #   volumes:
+  #     - ./redis/data:/data
+  #   logging: &logging
+  #     driver: journald
+  #     options:
+  #       tag: '{{.Name}}'
 
   db:
     image: 'postgres:9.6-alpine'
@@ -22,8 +22,10 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./db/data:/var/lib/postgresql/data
-    logging:
-      <<: *logging
+    logging: &logging
+      driver: journald
+      options:
+        tag: '{{.Name}}'
 
   app:
     build:
@@ -38,10 +40,10 @@ services:
     volumes:
       - backend-static:/root/src/static
       - ./media:/root/src/media
-    links:
-      - redis:redis
+    # links:
+    #   - redis:redis
     depends_on:
-      - redis
+      # - redis
       - db
     logging:
       <<: *logging
@@ -59,14 +61,14 @@ services:
       - ./media:/srv/media:ro
       - ./letsencrypt/etc:/etc/letsencrypt
       - ./letsencrypt/data:/data/letsencrypt
-      
+
     links:
       - app:app
     command: /bin/sh -c "envsubst '$$NGINX_HOST' < /tmp/default.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
     ports:
       - 80:80
       - 443:443
-      
+
     logging:
       <<: *logging
 
