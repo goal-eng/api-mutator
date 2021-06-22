@@ -183,12 +183,14 @@ def permute_locations(swagger: dict, seed: int):
 
     for _, methods in swagger['paths'].items():
         for method, description in methods.items():
+            if method != 'get':
+                continue
+
             for parameter in description.get('parameters', []):
                 if rnd.choice((True, False)):  # decide whether to permute this time or not
                     parameter['in'] = {
                         'query': 'header',
-                        'body': 'header',
-                        'header': 'query' if method == 'get' else 'body',
+                        'header': 'query',
                     }.get(parameter['in'], parameter['in'])
 
 
@@ -252,8 +254,8 @@ class ApiMixer:
         seed: int,
         permutations: Iterable[callable] = (
             permute_paths,
-            permute_formats,
-            permute_methods,
+            # permute_formats,
+            # permute_methods,
             permute_locations,
         )
     ):
