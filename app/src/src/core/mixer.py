@@ -7,21 +7,13 @@ from copy import deepcopy
 from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Any
 
-import xmltodict
-import yaml
-from dict2xml import dict2xml
 from src.core.synonyms import SYNONYMS
 
 log = getLogger(__name__)
 
-Format = namedtuple('Format', field_names=['name', 'encode', 'decode'])
-FORMATS = [
-    Format(name='application/json', decode=json.loads, encode=json.dumps),
-    Format(name='application/x-yaml', decode=yaml.load, encode=yaml.dump),
-    Format(name='application/xml', decode=xmltodict.parse, encode=dict2xml),
-]
+
 METHODS = ['get', 'put', 'post', 'patch']
 LOCATIONS = ['header', 'query', 'body']  # 'path', 'formData'
 
@@ -71,40 +63,6 @@ def permute_paths(swagger: dict, seed: int):
         return '/'.join(permuted_parts)
 
     swagger['paths'] = {permute_path(path): methods for path, methods in swagger['paths'].items()}
-
-
-def permute_formats(swagger: dict, seed: int):
-    """
-    Replaces request & response formats for all endpoints.
-
-    Example:
-        "/v1/auth": {
-            "post": {
-                "produces": [
-                    "application/json"
-                ],
-                "consumes": [
-                    "application/x-www-form-urlencoded",
-                    "application/json"
-                ],
-
-        --->
-
-        "/v1/auth": {
-            "post": {
-                "produces": [
-                    "application/xml"
-                ],
-                "consumes": [
-                    "application/xml"
-                ],
-    """
-    rnd = random.Random(seed)
-    fmt = rnd.choice(FORMATS)
-
-    for path, methods in swagger['paths'].items():
-        for method, description in methods.items():
-            description['produces'] = description['consumes'] = [fmt.name]
 
 
 def permute_methods(swagger: dict, seed: int):
@@ -194,18 +152,95 @@ def permute_locations(swagger: dict, seed: int):
                     }.get(parameter['in'], parameter['in'])
 
 
+def permute_result(swagger: dict, seed: int):
+    """
+    Replaces result object with a list. Horrible.
+
+    Example:
+        "definitions": {
+            "user_with_auth_token": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "User ID"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "User name"
+                    },
+                    "last_activity": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last activity of user"
+                    },
+                    "auth_token": {
+                        "type": "string",
+                        "description": "Auth token"
+                    }
+                },
+                "description": "Obtain auth token for a user"
+            },
+
+        --->
+
+        "definitions": {
+            "user_with_auth_token": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "format": "int32",
+                            "description": "User ID"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "User name"
+                        },
+                        "last_activity": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Last activity of user"
+                        },
+                        "auth_token": {
+                            "type": "string",
+                            "description": "Auth token"
+                        }
+                    },
+                    "description": "Obtain auth token for a user"
+                }
+            }
+
+    """
+
+    names = swagger['definitions'].keys()
+
+    for name in names:
+        definition = swagger['definitions'][name]
+        swagger['definitions'][name] = {
+            'type': 'array',
+            'items': definition,
+        }
+
+
+def permute_result_processor(result: Any) -> Any:
+    return [result]
+
+
 @dataclass(frozen=True)
 class Parameter:
     """
     A class representing 1 particular configuration unit from swagger file.
     Examples:
-        (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
-        (path='/v1/users/{id}', method='get', format='json', in_='header', name='Auth-Token')
-        (path='/v1/users/{id}', method='get', format='json', in_='query', name='id')
+        (path='/v1/users/{id}', method='get', in_='header', name='App-Token')
+        (path='/v1/users/{id}', method='get', in_='header', name='Auth-Token')
+        (path='/v1/users/{id}', method='get', in_='query', name='id')
     """
     path: str
     method: Optional[str]
-    format: Optional[str]
     in_: Optional[str]
     name: Optional[str]
 
@@ -213,8 +248,8 @@ class Parameter:
         """
         Parameters are equal if their fields are equal. None value matches every other value (i.e. None == wildcard).
         These are equal:
-            (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
-            (path='/v1/users/{id}', method='get', format='json', in_=None, name=None)
+            (path='/v1/users/{id}', method='get', in_='header', name='App-Token')
+            (path='/v1/users/{id}', method='get', in_=None, name=None)
         """
         for field in self.__annotations__:
             # we do case-insensitive comparison bc case may change
@@ -235,8 +270,8 @@ class ApiMixer:
 
     Permutation is achieved by following steps:
     1) Swagger file is parsed and converted into list of Parameters.
-       Parameter is just a tuple of path, method, format, value location, and value itself:
-       (path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
+       Parameter is just a tuple of path, method, value location, and value itself:
+       (path='/v1/users/{id}', method='get', in_='header', name='App-Token')
     2) A permuted list of parameters is generated by applying "permutations" - functions
        which take single Parameter and transform it to another Parameter.
     3) In the end we have list of original parameters and s probably convertedimilar list with those parameters
@@ -254,10 +289,13 @@ class ApiMixer:
         seed: int,
         permutations: Iterable[callable] = (
             permute_paths,
-            # permute_formats,
             # permute_methods,
             permute_locations,
-        )
+            permute_result,
+        ),
+        result_processors: Iterable[callable] = (
+            permute_result_processor,
+        ),
     ):
         self.swagger = swagger
         self.seed = seed
@@ -271,15 +309,17 @@ class ApiMixer:
         self.original_parameters = self.as_parameters(self.swagger)
         self.permuted_parameters = self.as_parameters(self.permuted_swagger)
 
+        self.result_processors = result_processors
+
     @classmethod
     def as_parameters(cls, swagger: dict) -> List[Parameter]:
         """
         Coverts a hierarchical swagger definition to a list of parameters.
         Example output: [
             # parameters from /v1/users/{id} endpoint:
-            Parameter(path='/v1/users/{id}', method='get', format='json', in_='header', name='App-Token')
-            Parameter(path='/v1/users/{id}', method='get', format='json', in_='header', name='Auth-Token')
-            Parameter(path='/v1/users/{id}', method='get', format='json', in_='query', name='id'),
+            Parameter(path='/v1/users/{id}', method='get', in_='header', name='App-Token')
+            Parameter(path='/v1/users/{id}', method='get', in_='header', name='Auth-Token')
+            Parameter(path='/v1/users/{id}', method='get', in_='query', name='id'),
             # parameters for other endpoints:
             ...
         ]
@@ -291,11 +331,11 @@ class ApiMixer:
 
                 if 'parameters' not in description:
                     # if no parameters for this endpoint, we just create a wildcard dummy parameter,
-                    # so that we remember path, method and format
-                    parameters.append(Parameter(path, method, description['produces'][0], None, None))
+                    # so that we remember path and method
+                    parameters.append(Parameter(path, method, None, None))
                 else:
                     for parameter in description['parameters']:
-                        parameters.append(Parameter(path, method, description['produces'][0], parameter['in'], parameter['name']))
+                        parameters.append(Parameter(path, method, parameter['in'], parameter['name']))
 
         return parameters
 

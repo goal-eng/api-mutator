@@ -16,7 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
 from requests import RequestException
-from .mixer import ApiMixer, Parameter, FORMATS
+from .mixer import ApiMixer, Parameter
 from .models import AccessAttemptFailure
 
 logging.basicConfig(level=logging.INFO)
@@ -49,34 +49,16 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
 
     permuted_path = request.path
     permuted_method = request.method.lower()
-    permuted_format = None if request.content_type == 'text/plain' else request.content_type
     permuted_parameters = {}
 
     for header, value in request.headers.items():
-        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'header', header)] = value
+        permuted_parameters[Parameter(permuted_path, permuted_method, 'header', header)] = value
 
     for post, value in request.POST.items():
-        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'formData', post)] = value
+        permuted_parameters[Parameter(permuted_path, permuted_method, 'formData', post)] = value
 
     for get, value in request.GET.items():
-        permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'query', get)] = value
-
-    if permuted_format:
-        try:
-            fmt = next(filter(lambda fmt: fmt.name == permuted_format, FORMATS))
-        except StopIteration:
-            raise ValueError(f'Unknown content-type: "{permuted_format}"')
-
-        try:
-            data = fmt.decode(request.body) if request.body else {}
-        except Exception:
-            raise ValueError(f'Could not decode "{fmt.name}": {request.body}')
-
-        if not isinstance(data, dict):
-            raise ValueError(f'Payload is not a dictionary: {request.body}')
-
-        for key, value in data.items():
-            permuted_parameters[Parameter(permuted_path, permuted_method, permuted_format, 'body', key)] = value
+        permuted_parameters[Parameter(permuted_path, permuted_method, 'query', get)] = value
 
     return permuted_parameters
 
@@ -84,7 +66,7 @@ def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]
 def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) -> requests.Request:
     """ Uses the list of parameters to make a request to host and returns response """
     assert parameters, 'Missing parameters to form a request'
-    assert len({(param.path, param.method, param.format) for param in parameters}) == 1, f'Inconsistent parameters {parameters}'
+    assert len({(param.path, param.method) for param in parameters}) == 1, f'Inconsistent parameters {parameters}'
 
     first_param = next(iter(parameters.keys()))
 
@@ -108,13 +90,13 @@ def proxy(request, user_pk: int):
     user_pk = int(user_pk)
 
     if AccessAttemptFailure.objects.filter(datetime__gte=now() - timedelta(hours=24)).count() >= 10:
-        raise PermissionDenied(f'Proxy is currently unavailable, please try again later')
+        raise PermissionDenied('Proxy is currently unavailable, please try again later')
 
     user = get_object_or_404(User, pk=user_pk)
     if user.failed_attempts.filter(datetime__gte=now() - timedelta(hours=24)).count() > \
             settings.HUBSTAFF_MAX_FAILED_BEFORE_BLOCK:
-        raise SuspiciousOperation(f'Too many attempts to access Hubstaff API with wrong credentials; '
-                                  f'please wait 24h before further attempts')
+        raise SuspiciousOperation('Too many attempts to access Hubstaff API with wrong credentials; '
+                                  'please wait 24h before further attempts')
 
     # convert user's request to list of parameters
     try:
@@ -137,13 +119,14 @@ def proxy(request, user_pk: int):
                 continue  # we ignore redundant headers
 
             return JsonResponse(status=400, data={
-                'error': f'Unexpected: {permuted_parameter.method.upper()} {permuted_parameter.path} '
-                         f'{permuted_parameter.in_.upper()} {permuted_parameter.name}={value}'})
+                'error': f'Unexpected parameter: '
+                         f'method="{permuted_parameter.method.upper()}" path="{permuted_parameter.path}" '
+                         f'location="{permuted_parameter.in_.upper()}" '
+                         f'name="{permuted_parameter.name}" value="{value}"'
+            })
 
     log.info(f'IN:\n{pformat(permuted_parameters)}')
     log.info(f'OUT:\n{pformat(parameters)}')
-
-    fmt = next(filter(lambda fmt: fmt.name == next(iter(permuted_parameters)).format, FORMATS))
 
     # make a request with original (pure) parameters
     request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
@@ -151,14 +134,20 @@ def proxy(request, user_pk: int):
         prepared_request = session.prepare_request(request)
         response = session.send(prepared_request, timeout=(60, 60))
     except RequestException as exc:
-        return HttpResponse(status=500, content=fmt.encode({'error': f'API error: {exc}'}), content_type=fmt.name)
-
-    try:
-        payload = response.json()
-    except ValueError:
-        payload = response.text
+        return JsonResponse(status=500, data={'error': f'API error: {exc}'})
 
     if response.status_code == 401:
         AccessAttemptFailure.objects.create(user=user)
 
-    return HttpResponse(status=response.status_code, content=fmt.encode(payload), content_type=fmt.name)
+    try:
+        result = response.json()
+        for processor in mixer.result_processors:
+            result = processor(result)
+    except ValueError:
+        result = response.text
+
+    return JsonResponse(status=response.status_code, data=result, safe=False)
+
+
+def handler404(request, exception):
+    return HttpResponse(status=404, content='')
