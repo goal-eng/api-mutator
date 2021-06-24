@@ -221,13 +221,15 @@ def permute_result(swagger: dict, seed: int):
     for name in names:
         definition = swagger['definitions'][name]
         swagger['definitions'][name] = {
-            'type': 'array',
-            'items': definition,
+            'type': 'object',
+            'properties': {
+                'result': definition,
+            },
         }
 
 
 def permute_result_processor(result: Any) -> Any:
-    return [result]
+    return {'result': result}
 
 
 @dataclass(frozen=True)
