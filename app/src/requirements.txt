@@ -8,7 +8,4 @@ sentry-sdk==0.14.3
 pytest==6.2.4
 pytest-django==4.4.0
 
-xmltodict
-dict2xml
-pyyaml
 requests
