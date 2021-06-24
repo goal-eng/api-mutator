@@ -146,7 +146,7 @@ def proxy(request, user_pk: int):
     except ValueError:
         result = response.text
 
-    return JsonResponse(status=response.status_code, data=result, safe=False)
+    return JsonResponse(status=response.status_code, data=result)
 
 
 def handler404(request, exception):
