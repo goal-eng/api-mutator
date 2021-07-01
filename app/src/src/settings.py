@@ -163,6 +163,8 @@ else:
 # how many failed attempts it is allowed to do before we block this user
 HUBSTAFF_MAX_FAILED_BEFORE_BLOCK = 3
 SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v1.swagger.json'
+HUBSTAFF_APP_TOKEN = env('HUBSTAFF_APP_TOKEN')
+HUBSTAFF_AUTH_TOKEN = env('HUBSTAFF_AUTH_TOKEN')
 
 if env('SENTRY_DSN', default=''):
     sentry_logging = LoggingIntegration(

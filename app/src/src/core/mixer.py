@@ -2,13 +2,14 @@ import json
 import random
 import re
 from argparse import ArgumentParser
-from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
-from typing import Iterable, List, Optional, Any
+from typing import Any, Iterable, List, Optional
 
+import requests
+from django.conf import settings
 from src.core.synonyms import SYNONYMS
 
 log = getLogger(__name__)
@@ -152,6 +153,17 @@ def permute_locations(swagger: dict, seed: int):
                     }.get(parameter['in'], parameter['in'])
 
 
+def permute_credentials(request: requests.Request):
+
+    if 'App-Token' not in request.headers:
+        raise ValueError('Missing app token')
+    request.headers['App-Token'] = settings.HUBSTAFF_APP_TOKEN
+
+    if 'Auth-Token' not in request.headers:
+        raise ValueError('Missing auth token')
+    request.headers['Auth-Token'] = settings.HUBSTAFF_AUTH_TOKEN
+
+
 def permute_result(swagger: dict, seed: int):
     """
     Replaces result object with a list. Horrible.
@@ -236,11 +248,13 @@ def permute_result_processor(result: Any) -> Any:
 class Parameter:
     """
     A class representing 1 particular configuration unit from swagger file.
+
     Examples:
         (path='/v1/users/{id}', method='get', in_='header', name='App-Token')
         (path='/v1/users/{id}', method='get', in_='header', name='Auth-Token')
         (path='/v1/users/{id}', method='get', in_='query', name='id')
     """
+
     path: str
     method: Optional[str]
     in_: Optional[str]
@@ -265,9 +279,11 @@ class Parameter:
         return True
 
 
+@dataclass
 class ApiMixer:
     """
-    Given any dictionary in Swagger format, performs random substitutions of specific fields.
+    Given any dictionary in Swagger format, perform random substitutions of specific fields.
+
     "Randomness" is consistent across runs and depends only on seed.
 
     Permutation is achieved by following steps:
@@ -285,38 +301,40 @@ class ApiMixer:
     5) Response from Hubstaff API is returned back to user.
     """
 
-    def __init__(
-        self,
-        swagger: dict,
-        seed: int,
-        permutations: Iterable[callable] = (
-            permute_paths,
-            # permute_methods,
-            permute_locations,
-            permute_result,
-        ),
-        result_processors: Iterable[callable] = (
-            permute_result_processor,
-        ),
-    ):
-        self.swagger = swagger
-        self.seed = seed
+    swagger: dict
+    seed: int
+
+    permutations: Iterable[callable] = (
+        permute_paths,
+        # permute_methods,
+        permute_locations,
+        permute_result,
+    )
+
+    request_processors: Iterable[callable] = (
+        permute_credentials,
+    )
+
+    result_processors: Iterable[callable] = (
+        permute_result_processor,
+    )
+
+    def __post_init__(self):
 
         # apply permutations on swagger copy
         self.permuted_swagger = deepcopy(self.swagger)
-        for permutation in permutations:
+        for permutation in self.permutations:
             permutation(self.permuted_swagger, self.seed)
 
         # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
         self.permuted_parameters = self.as_parameters(self.permuted_swagger)
 
-        self.result_processors = result_processors
-
     @classmethod
     def as_parameters(cls, swagger: dict) -> List[Parameter]:
         """
-        Coverts a hierarchical swagger definition to a list of parameters.
+        Covert a hierarchical swagger definition to a list of parameters.
+
         Example output: [
             # parameters from /v1/users/{id} endpoint:
             Parameter(path='/v1/users/{id}', method='get', in_='header', name='App-Token')
@@ -326,6 +344,7 @@ class ApiMixer:
             ...
         ]
         """
+
         parameters = []
 
         for path, methods in swagger['paths'].items():
@@ -342,7 +361,7 @@ class ApiMixer:
         return parameters
 
     def reverse(self, permuted_parameter: Parameter) -> Parameter:
-        """ Converts permuted parameter to original one. Raises ValueError if permuted parameter is not expected. """
+        """ Convert permuted parameter to original one. Raises ValueError if permuted parameter is not expected. """
         return self.original_parameters[self.permuted_parameters.index(permuted_parameter)]
 
 

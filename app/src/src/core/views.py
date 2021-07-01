@@ -45,7 +45,7 @@ session = requests.Session()
 
 
 def _request_to_params(request: HttpRequest) -> Dict[Parameter, Union[int, str]]:
-    """ Converts user's request to dict {Parameter: value} """
+    """ Convert user's request to dict {Parameter: value}. """
 
     permuted_path = request.path
     permuted_method = request.method.lower()
@@ -130,6 +130,9 @@ def proxy(request, user_pk: int):
 
     # make a request with original (pure) parameters
     request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
+    for request_processor in mixer.request_processors:
+        request_processor(request)
+
     try:
         prepared_request = session.prepare_request(request)
         response = session.send(prepared_request, timeout=(60, 60))

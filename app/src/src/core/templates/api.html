@@ -9,14 +9,14 @@
 
     <div style="padding: 20px;">
 
-      <h2>Hubstaff API v1</h2>
-      <p>
-        Create an app and get app token on <a href="https://app.hubstaff.com/developer/my_apps" target="_blank">https://app.hubstaff.com/developer/my_apps</a>.
-        <br>
-        Follow instructions on <a href="https://app.hubstaff.com/developer/authentication" target="_blank">https://app.hubstaff.com/developer/authentication</a>.
-      </p>
-
       {% comment %}
+        <h2>Hubstaff API v1</h2>
+        <p>
+          Create an app and get app token on <a href="https://app.hubstaff.com/developer/my_apps" target="_blank">https://app.hubstaff.com/developer/my_apps</a>.
+          <br>
+          Follow instructions on <a href="https://app.hubstaff.com/developer/authentication" target="_blank">https://app.hubstaff.com/developer/authentication</a>.
+        </p>
+
         <h2>Hubstaff API v2</h2>
         <p>
           Follow instructions to get personal access token:
@@ -40,11 +40,24 @@
         </pre>
       {% endcomment %}
 
-      Below is your very personalized hubstaff API.
+      <p>
+        Below is your very personalized hubstaff API.
+      </p>
+      <p>
+        Please use these credentials to access it:
+        <ul>
+          <li>
+            <b>App token:</b> {{ request.user.api_credentials.app_token }}
+          </li>
+          <li>
+            <b>Auth token:</b> {{ request.user.api_credentials.auth_token }}
+          </li
+        </ul>
+      </p>
 
     </div>
 
-    <div id="swagger-ui"></div>
+    <div id="swagger-ui" style="padding: 0px 20px;"></div>
 
     <script src="{% static 'swagger-ui-dist/swagger-ui-bundle.js' %}"></script>
     <script src="{% static 'swagger-ui-dist/swagger-ui-standalone-preset.js' %}"></script>
