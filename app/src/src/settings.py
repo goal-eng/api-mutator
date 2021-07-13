@@ -164,7 +164,20 @@ else:
 HUBSTAFF_MAX_FAILED_BEFORE_BLOCK = 3
 SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v1.swagger.json'
 HUBSTAFF_APP_TOKEN = env('HUBSTAFF_APP_TOKEN')
+HUBSTAFF_USERNAME = env('HUBSTAFF_USERNAME')
+HUBSTAFF_PASSWORD = env('HUBSTAFF_PASSWORD')
 HUBSTAFF_AUTH_TOKEN = env('HUBSTAFF_AUTH_TOKEN')
+if not HUBSTAFF_AUTH_TOKEN:  # fetch auth token if not provided
+    import requests
+    response = requests.post('https://api.hubstaff.com/v1/auth', headers={
+        'App-Token': HUBSTAFF_APP_TOKEN,
+    }, data={
+        'email': HUBSTAFF_USERNAME,
+        'password': HUBSTAFF_PASSWORD,
+    }, timeout=30)
+    response.raise_for_status()
+    HUBSTAFF_AUTH_TOKEN = response.json()['user']['auth_token']
+
 
 if env('SENTRY_DSN', default=''):
     sentry_logging = LoggingIntegration(
