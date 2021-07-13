@@ -3,13 +3,15 @@ import random
 import re
 from argparse import ArgumentParser
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import cached_property
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Tuple
 
+import humps
 import requests
-from django.conf import settings
+from src.core.hubstaff import hubstaff
 from src.core.synonyms import SYNONYMS
 
 log = getLogger(__name__)
@@ -19,7 +21,7 @@ METHODS = ['get', 'put', 'post', 'patch']
 LOCATIONS = ['header', 'query', 'body']  # 'path', 'formData'
 
 
-def permute_paths(swagger: dict, seed: int):
+def permute_paths(swagger: dict, seed: int, meta: dict):
     """
     Replaces parts of swagger paths with dictionary words.
 
@@ -66,7 +68,7 @@ def permute_paths(swagger: dict, seed: int):
     swagger['paths'] = {permute_path(path): methods for path, methods in swagger['paths'].items()}
 
 
-def permute_methods(swagger: dict, seed: int):
+def permute_methods(swagger: dict, seed: int, meta: dict):
     """
     Replaces methods of swagger paths with random ones and modifies locations of parameters according to the methods.
 
@@ -113,7 +115,7 @@ def permute_methods(swagger: dict, seed: int):
                     parameter['in'] = 'body'
 
 
-def permute_locations(swagger: dict, seed: int):
+def permute_locations(swagger: dict, seed: int, meta: dict):
     """
     Replaces locations of parameters (i.e. moves parameter from header to query string etc).
 
@@ -152,19 +154,24 @@ def permute_locations(swagger: dict, seed: int):
                         'header': 'query',
                     }.get(parameter['in'], parameter['in'])
 
+                    if parameter['in'] == 'header':
+                        parameter['name'] = humps.pascalize(parameter['name'])
+                    elif parameter['in'] == 'query':
+                        parameter['name'] = humps.decamelize(parameter['name'].replace('-', ''))
 
-def permute_credentials(request: requests.Request):
+
+def permute_credentials(request: requests.Request, meta: dict):
 
     if 'App-Token' not in request.headers:
         raise ValueError('Missing app token')
-    request.headers['App-Token'] = settings.HUBSTAFF_APP_TOKEN
+    request.headers['App-Token'] = hubstaff.app_token
 
     if 'Auth-Token' not in request.headers:
         raise ValueError('Missing auth token')
-    request.headers['Auth-Token'] = settings.HUBSTAFF_AUTH_TOKEN
+    request.headers['Auth-Token'] = hubstaff.auth_token
 
 
-def permute_result(swagger: dict, seed: int):
+def permute_result(swagger: dict, seed: int, meta: dict):
     """
     Replaces result object with a list. Horrible.
 
@@ -240,8 +247,34 @@ def permute_result(swagger: dict, seed: int):
         }
 
 
-def permute_result_processor(result: Any) -> Any:
+def permute_result_processor(result: Any, meta: dict) -> Any:
     return {'result': result}
+
+
+def personal_filter_result_processor(result: Any, meta: dict) -> Any:
+
+    email = meta['user']['email']
+
+    def is_forbidden(value: Any) -> bool:
+        if isinstance(value, str) and '@' in value and value != email:
+            return True
+
+        return False
+
+    def fix_recursively(data: Any) -> Any:
+
+        if isinstance(data, dict):
+            if any(is_forbidden(value) for value in data.values()):
+                return {}
+            else:
+                return {key: fix_recursively(value) for key, value in data.items()}
+
+        if isinstance(data, list):
+            return [fixed for value in data if (fixed := fix_recursively(value))]
+
+        return data
+
+    return fix_recursively(result)
 
 
 @dataclass(frozen=True)
@@ -260,6 +293,10 @@ class Parameter:
     in_: Optional[str]
     name: Optional[str]
 
+    @cached_property
+    def re_path(self) -> re.Pattern:
+        return re.compile(re.sub(r'\{(.+?)\}', r'(?P<\1>.+)', self.path))  # /users/{id}/projects -> /users/.*?/projects
+
     def __eq__(self, other) -> bool:
         """
         Parameters are equal if their fields are equal. None value matches every other value (i.e. None == wildcard).
@@ -267,14 +304,29 @@ class Parameter:
             (path='/v1/users/{id}', method='get', in_='header', name='App-Token')
             (path='/v1/users/{id}', method='get', in_=None, name=None)
         """
-        for field in self.__annotations__:
+        for field_ in self.__annotations__:
             # we do case-insensitive comparison bc case may change
             # (field name will be capitalized if transformed into header, and vice versa)
-            val1 = getattr(self, field).lower()
-            val2 = getattr(other, field).lower()
+            val1 = getattr(self, field_)
+            val2 = getattr(other, field_)
 
-            if not (val1 == val2 or val1 is None or val2 is None):
-                return False
+            if val1 is None or val2 is None:
+                continue
+
+            val1 = val1.lower()
+            val2 = val2.lower()
+
+            if val1 == val2:
+                continue
+
+            if field_ == 'path':
+                if '{' in val1 and self.re_path.match(val2):
+                    continue
+
+                elif '{' in val2 and other.re_path.match(val1):
+                    continue
+
+            return False
 
         return True
 
@@ -303,6 +355,7 @@ class ApiMixer:
 
     swagger: dict
     seed: int
+    meta: dict = field(default_factory=dict)
 
     permutations: Iterable[callable] = (
         permute_paths,
@@ -316,6 +369,7 @@ class ApiMixer:
     )
 
     result_processors: Iterable[callable] = (
+        personal_filter_result_processor,
         permute_result_processor,
     )
 
@@ -324,7 +378,7 @@ class ApiMixer:
         # apply permutations on swagger copy
         self.permuted_swagger = deepcopy(self.swagger)
         for permutation in self.permutations:
-            permutation(self.permuted_swagger, self.seed)
+            permutation(self.permuted_swagger, self.seed, self.meta)
 
         # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
@@ -360,9 +414,13 @@ class ApiMixer:
 
         return parameters
 
-    def reverse(self, permuted_parameter: Parameter) -> Parameter:
-        """ Convert permuted parameter to original one. Raises ValueError if permuted parameter is not expected. """
-        return self.original_parameters[self.permuted_parameters.index(permuted_parameter)]
+    def reverse(self, permuted_parameter: Parameter) -> Tuple[Parameter, Parameter]:
+        """
+        Convert permuted parameter to permuted definition + original parameter.
+        Raises ValueError if permuted parameter is not expected.
+        """
+        idx = self.permuted_parameters.index(permuted_parameter)
+        return self.permuted_parameters[idx], self.original_parameters[idx]
 
 
 if __name__ == '__main__':
