@@ -15,10 +15,11 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
-from requests import RequestException
-from .mixer import ApiMixer, Parameter
-from .models import AccessAttemptFailure
-from .hubstaff import hubstaff
+from src.core.mixer import ApiMixer, Parameter
+from src.core.models import AccessAttemptFailure
+from src.core.hubstaff import hubstaff
+from src.core.permutations import permute_paths, permute_locations, permute_result, \
+    permute_credentials, personal_filter_result_processor, permute_result_processor
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
@@ -26,7 +27,9 @@ log = logging.getLogger(__file__)
 
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
 @lru_cache(maxsize=32)
-def get_mixer(seed: int, email: str) -> ApiMixer:
+def get_mixer(user_pk: int) -> ApiMixer:
+
+    user_obj = User.objects.get(pk=user_pk)
 
     # get user ID and project ID
     offset = 0
@@ -38,15 +41,35 @@ def get_mixer(seed: int, email: str) -> ApiMixer:
         })['users']
 
         try:
-            user = next(user for user in users if user['email'] == email)
+            user_data = next(user for user in users if user['email'] == user_obj.email)
             break
         except StopIteration:
             offset += len(users)
 
         if not users:
-            raise ValueError(f'User with email {email} not found in Hubstaff API /users response: {users}')
+            raise ValueError(f'User with email {user_obj.email} not found in Hubstaff API /users response: {users}')
 
-    return ApiMixer(json.loads(settings.SWAGGER_FILE_PATH.read_text()), seed, meta={'user': user})
+    return ApiMixer(
+        swagger=json.loads(settings.SWAGGER_FILE_PATH.read_text()),
+        seed=user_obj.pk,
+        meta={
+            'user': user_obj,
+            'user_data': user_data,
+        },
+        permutations=(
+            permute_paths,
+            # permute_methods,
+            permute_locations,
+            permute_result,
+        ),
+        request_processors=(
+            permute_credentials,
+        ),
+        result_processors=(
+            personal_filter_result_processor,
+            permute_result_processor,
+        ),
+    )
 
 
 class ApiDescriptionView(TemplateView):
@@ -55,7 +78,7 @@ class ApiDescriptionView(TemplateView):
 
 class SwaggerView(View):
     def get(self, *args, **kwargs):
-        mixer = get_mixer(seed=self.request.user.pk, email=self.request.user.email)
+        mixer = get_mixer(user_pk=self.request.user.pk)
         swagger = mixer.permuted_swagger
         swagger['host'] = self.request.META['HTTP_HOST']
         return JsonResponse(swagger)
@@ -110,7 +133,23 @@ def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) 
     )
 
 
+def jsonify_exceptions(fn: callable) -> callable:
+
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            return JsonResponse(status=400, data=permute_result_processor({
+                'error': str(exc),
+                'help': f'Please contact {settings.SUPPORT_EMAIL} if you think '
+                        f'the API is misbehaving or you have any questions',
+            }, meta={}))
+
+    return wrapper
+
+
 @csrf_exempt
+@jsonify_exceptions
 def proxy(request, user_pk: int):
     user_pk = int(user_pk)
 
@@ -125,14 +164,11 @@ def proxy(request, user_pk: int):
                                   'please wait 24h before further attempts')
 
     # convert user's request to list of parameters
-    try:
-        permuted_parameters = _request_to_params(request)
-    except ValueError as exc:
-        return JsonResponse(status=400, data={'error': str(exc)})
+    permuted_parameters = _request_to_params(request)
 
     # convert each parameter to original (non-mutated) one, or drop if parameter is redundant
     parameters = {}
-    mixer = get_mixer(seed=user_pk, email=user.email)
+    mixer = get_mixer(user_pk=user.pk)
     for permuted_parameter, value in permuted_parameters.items():
         try:
             log.debug(f'Permuted parameter: {permuted_parameter}')
@@ -150,44 +186,54 @@ def proxy(request, user_pk: int):
                 log.debug(f'Ignoring unexpected {permuted_parameter.in_} parameter: {permuted_parameter}')
                 continue  # we ignore redundant headers
 
-            return JsonResponse(status=400, data={
-                'error': f'Unexpected parameter: '
-                         f'method="{permuted_parameter.method.upper()}" path="{permuted_parameter.path}" '
-                         f'location="{permuted_parameter.in_.upper()}" '
-                         f'name="{permuted_parameter.name}" value="{value}"'
-            })
+            raise ValueError(
+                f'Unexpected parameter: '
+                f'method="{permuted_parameter.method.upper()}" path="{permuted_parameter.path}" '
+                f'location="{permuted_parameter.in_.upper()}" '
+                f'name="{permuted_parameter.name}" value="{value}"'
+            )
 
     log.info(f'IN:\n{pformat(permuted_parameters)}')
     log.info(f'OUT:\n{pformat(parameters)}')
 
     # make a request with original (pure) parameters
-    try:
-        request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
-    except ValueError as exc:
-        return JsonResponse(status=400, data={
-            'error': str(exc),
-        })
+    request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
 
-    for request_processor in mixer.request_processors:
-        request_processor(request, meta=mixer.meta)  # TODO: refactor
+    if request.url == 'https://api.hubstaff.com/v1/auth':
+        # this is a hack so that candidates don't reach real auth endpoint but instead
+        # get fake credentials from out proxy
 
-    try:
+        if user.email != (email := request.data.get('email', '')):
+            raise ValueError(f'Wrong email provided: {email}')
+
+        if not user.check_password(request.data.get('password')):
+            raise ValueError('Password mismatch')
+
+        result = {
+            'id': None,
+            'name': None,
+            'last_activity': None,
+            'auth_token': user.api_credentials.auth_token,
+        }
+        status_code = 200
+
+    else:
+        for request_processor in mixer.request_processors:
+            request_processor(request, meta=mixer.meta)  # TODO: refactor
+
         prepared_request = session.prepare_request(request)
         response = session.send(prepared_request, timeout=(60, 60))
-    except RequestException as exc:
-        return JsonResponse(status=500, data={'error': f'API error: {exc}'})
 
-    if response.status_code == 401:
-        AccessAttemptFailure.objects.create(user=user)
+        status_code = response.status_code
+        if status_code == 401:
+            AccessAttemptFailure.objects.create(user=user)
 
-    try:
         result = response.json()
-        for processor in mixer.result_processors:
-            result = processor(result, meta=mixer.meta)
-    except ValueError:
-        result = response.text
 
-    return JsonResponse(status=response.status_code, data=result)
+    for processor in mixer.result_processors:
+        result = processor(result, meta=mixer.meta)
+
+    return JsonResponse(status=status_code, data=result)
 
 
 def handler404(request, exception):
