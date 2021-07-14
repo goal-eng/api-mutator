@@ -46,12 +46,21 @@
       <p>
         Please use these credentials to access it:
         <ul>
-          <li>
-            <b>App token:</b> {{ request.user.api_credentials.app_token }}
-          </li>
-          <li>
-            <b>Auth token:</b> {{ request.user.api_credentials.auth_token }}
-          </li
+          <li><b>Email:</b> {{ request.user.email }}</li>
+          <li><b>Password:</b> (the one you used to login here)</li>
+          <li><b>App token:</b> {{ request.user.api_credentials.app_token }}</li>
+          {% comment %}
+            <li><b>Auth token:</b> {{ request.user.api_credentials.auth_token }}</li>
+          {% endcomment %}
+        </ul>
+        <i>Important: You should not use your real Hubstaff credentials.</i>
+      </p>
+
+      <p>
+        Tips:
+        <ul>
+          <li>Whenever any header requires boolean value, use string '1' which will be treated as "True"</li>
+          <li>Hubstaff response definitions are different from what they really return - be careful</li>
         </ul>
       </p>
 
