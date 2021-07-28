@@ -118,6 +118,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+API_KEY = env('API_KEY', default='')
+
 
 # Internationalization
 
