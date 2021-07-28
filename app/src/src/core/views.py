@@ -31,10 +31,9 @@ def api_user_update(request):
     if not request.method == 'POST':
         raise Http404()
 
-    payload = request.POST
-    fields = ['password', 'email']
-    if not all(field in payload for field in fields):
-        return JsonResponse({'error': f'Missing one of fields {fields}'}, status=400)
+    email = request.POST.get('email', None)
+    if not email:
+        return JsonResponse({'error': f'Missing email'}, status=400)
 
     if not settings.API_KEY:
         return JsonResponse({'error': 'API key not set'}, status=500)
@@ -44,13 +43,14 @@ def api_user_update(request):
 
     with transaction.atomic():
         user, _ = User.objects.get_or_create(
-            username=payload['email'],
-            email=payload['email'],
+            username=email,
+            email=email,
         )
-        user.set_password(payload['password'])
+        password = User.objects.make_random_password()
+        user.set_password(password)
         user.save()
 
-    return JsonResponse({'message': f'Updated {payload["email"]}'})
+    return JsonResponse({'message': f'Updated {email}', 'password': password})
 
 
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
