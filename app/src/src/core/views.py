@@ -6,10 +6,11 @@ from pprint import pformat
 from typing import Dict, Union
 
 import requests
+from django.db import transaction
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import SuspiciousOperation, PermissionDenied
-from django.http import JsonResponse, HttpResponse, HttpRequest
+from django.http import JsonResponse, HttpResponse, HttpRequest, Http404
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
@@ -23,6 +24,33 @@ from src.core.permutations import permute_paths, permute_locations, permute_resu
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
+
+
+@csrf_exempt
+def api_user_update(request):
+    if not request.method == 'POST':
+        raise Http404()
+
+    payload = request.POST
+    fields = ['password', 'email']
+    if not all(field in payload for field in fields):
+        return JsonResponse({'error': f'Missing one of fields {fields}'}, status=400)
+
+    if not settings.API_KEY:
+        return JsonResponse({'error': 'API key not set'}, status=500)
+
+    if request.headers.get('ApiKey', '') != settings.API_KEY:
+        return JsonResponse({'error': 'Bad API key'}, status=403)
+
+    with transaction.atomic():
+        user, _ = User.objects.get_or_create(
+            username=payload['email'],
+            email=payload['email'],
+        )
+        user.set_password(payload['password'])
+        user.save()
+
+    return JsonResponse({'message': f'Updated {payload["email"]}'})
 
 
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
