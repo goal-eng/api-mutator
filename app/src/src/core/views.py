@@ -33,7 +33,7 @@ def api_user_update(request):
 
     email = request.POST.get('email', None)
     if not email:
-        return JsonResponse({'error': f'Missing email'}, status=400)
+        return JsonResponse({'error': 'Missing email'}, status=400)
 
     if not settings.API_KEY:
         return JsonResponse({'error': 'API key not set'}, status=500)
@@ -236,6 +236,9 @@ def proxy(request, user_pk: int):
 
         if not user.check_password(request.data.get('password')):
             raise ValueError('Password mismatch')
+
+        if user.api_credentials.app_token != request.headers.get('App-Token', ''):
+            raise ValueError('App-Token mismatch')
 
         result = {
             'id': None,
