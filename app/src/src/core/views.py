@@ -50,6 +50,7 @@ def api_user_update(request):
         user.set_password(password)
         user.save()
 
+    log.info(f'Updated {email} password: {password}')
     return JsonResponse({'message': f'Updated {email}', 'password': password})
 
 
