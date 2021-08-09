@@ -23,7 +23,7 @@ def password_default() -> str:
 
 class ApiCredentials(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='api_credentials')
-    password = models.CharField(max_length=PASSWORD_LENGTH, default=password_default)
+    password = models.CharField(max_length=255, default=password_default)
     app_token = models.CharField(max_length=255, default=partial(get_random_string, length=16))
     auth_token = models.CharField(max_length=255, default=partial(get_random_string, length=16))
 
