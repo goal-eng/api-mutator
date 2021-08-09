@@ -46,12 +46,13 @@ def api_user_update(request):
             username=email,
             email=email,
         )
-        password = User.objects.make_random_password()
-        user.set_password(password)
-        user.save()
 
-    log.info(f'Updated {email} password: {password}')
-    return JsonResponse({'message': f'Updated {email}', 'password': password})
+    return JsonResponse({
+        'message': f'Updated {email}',
+        'user': user.username,
+        'password': user.api_credentials.password,
+        'app_token': user.api_credentials.app_token,
+    })
 
 
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
