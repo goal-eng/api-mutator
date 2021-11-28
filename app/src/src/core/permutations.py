@@ -134,6 +134,7 @@ def permute_locations(swagger: dict, seed: int, meta: dict):
             },
     """
     rnd = random.Random(seed)
+    params_locations = {}  # persistence: same param is always located in the same place
 
     for _, methods in swagger['paths'].items():
         for method, description in methods.items():
@@ -141,16 +142,23 @@ def permute_locations(swagger: dict, seed: int, meta: dict):
                 continue
 
             for parameter in description.get('parameters', []):
-                if rnd.choice((True, False)):  # decide whether to permute this time or not
-                    parameter['in'] = {
-                        'query': 'header',
-                        'header': 'query',
-                    }.get(parameter['in'], parameter['in'])
+                in_ = params_locations.get(parameter['name'])
+                if not in_:
+                    if rnd.choice((True, False)):  # decide whether to permute this time or not
+                        in_ = {
+                            'query': 'header',
+                            'header': 'query',
+                        }.get(parameter['in'], parameter['in'])
+                    else:
+                        in_ = parameter['in']
+                    params_locations[parameter['name']] = in_
 
-                    if parameter['in'] == 'header':
-                        parameter['name'] = humps.pascalize(parameter['name'])
-                    elif parameter['in'] == 'query':
-                        parameter['name'] = humps.decamelize(parameter['name'].replace('-', ''))
+                parameter['in'] = in_
+                if in_ == 'header':
+                    parameter['name'] = humps.pascalize(parameter['name'])
+                elif in_ == 'query':
+                    parameter['name'] = humps.decamelize(parameter['name'].replace('-', ''))
+
 
 
 def permute_credentials(request: requests.Request, meta: dict):
