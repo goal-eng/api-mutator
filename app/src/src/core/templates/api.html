@@ -7,7 +7,8 @@
 
 {% block content %}
 
-    <div style="padding: 20px;">
+    <div style="padding: 20px; background-color: #eef;">
+      <h1>Hubstaff API v{{ request.user.pk }}</h1>
 
       {% comment %}
         <h2>Hubstaff API v1</h2>
@@ -60,12 +61,13 @@
         Tips:
         <ul>
           <li>Whenever any header requires boolean value, use string "1" which will be treated as "True"</li>
+          <li>As a best practice the API has limits on how much data it will return in a response.<br>In some cases an offset parameter is used to paginate through the result set. In other cases, such as with date ranges, the dates can be adjusted with each request to get the complete result set.</li>
         </ul>
       </p>
 
     </div>
 
-    <div id="swagger-ui" style="padding: 0px 20px;"></div>
+    <div id="swagger-ui" style="padding: 0px 0px;"></div>
 
     <script src="{% static 'swagger-ui-dist/swagger-ui-bundle.js' %}"></script>
     <script src="{% static 'swagger-ui-dist/swagger-ui-standalone-preset.js' %}"></script>
