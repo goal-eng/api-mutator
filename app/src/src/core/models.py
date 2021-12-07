@@ -51,7 +51,7 @@ class HubstaffAccessInfo(models.Model):
     refresh_token = models.TextField()
     token_type = models.CharField(max_length=32)
     expires_in = models.PositiveIntegerField()
-    created_at = models.DateTimeField(auto_created=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
 
     def save(self, *args, **kwargs):
