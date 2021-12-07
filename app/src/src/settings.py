@@ -164,11 +164,8 @@ else:
 
 # how many failed attempts it is allowed to do before we block this user
 HUBSTAFF_MAX_FAILED_BEFORE_BLOCK = 3
-SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v1.swagger.json'
-HUBSTAFF_APP_TOKEN = env('HUBSTAFF_APP_TOKEN', default='')
-HUBSTAFF_AUTH_TOKEN = env('HUBSTAFF_AUTH_TOKEN', default='')
-HUBSTAFF_USERNAME = env('HUBSTAFF_USERNAME', default='')
-HUBSTAFF_PASSWORD = env('HUBSTAFF_PASSWORD', default='')
+SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v2.swagger.json'
+HUBSTAFF_REFRESH_TOKEN = env('HUBSTAFF_REFRESH_TOKEN', default='')
 SUPPORT_EMAIL = env('SUPPORT_EMAIL', default='')
 
 if env('SENTRY_DSN', default=''):
