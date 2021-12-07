@@ -14,24 +14,26 @@
         <p>If you find any inconsistencies please report to <a href="mailto:{{ SUPPORT_EMAIL }}">{{ SUPPORT_EMAIL }}</a>.</p>
       {% endif %}
 
+      <h2>API endpoint</h2>
+      Use <code>http{% if request.is_secure %}s{% endif %}://{{ request.get_host }}</code> as base for all API requests.
+
       <h2>Authentication</h2>
       <p>
-        The API uses token-based authentication, each reqeust is required to have two tokens:<br>
-        <code>App token</code> - The token that identifies and authenticates the app.<br>
-        <code>Auth token</code> - The token that identifies and authenticates the user.<br>
+        The API uses token-based authentication, each request is required to have two tokens:<br>
+        <code>App token</code> - The token that identifies and authenticates the app<br>
+        <code>Auth token</code> - The token that identifies and authenticates the user<br>
         If either of these tokens are missing or invalid the API will respond with an error.
       </p>
       <p>
         Here are your credentials to access the API:
         <ul>
-          <li><b>Email:</b> {{ request.user.email }}</li>
-          <li><b>Password:</b> {{ request.user.api_credentials.password }}</li>
-          <li><b>App token:</b> {{ request.user.api_credentials.app_token }}</li>
+          <li><b>Email:</b> <code>{{ request.user.email }}</code></li>
+          <li><b>Password:</b> <code>{{ request.user.api_credentials.password }}</code></li>
+          <li><b>App token:</b> <code>{{ request.user.api_credentials.app_token }}</code></li>
           {% comment %}
             <li><b>Auth token:</b> {{ request.user.api_credentials.auth_token }}</li>
           {% endcomment %}
         </ul>
-        <i>Important: You should not use your real Hubstaff credentials.</i>
       </p>
 
 
