@@ -11,3 +11,4 @@ pyhumps==3.0.2
 
 requests
 ipython
+pprintpp

@@ -11,6 +11,9 @@ SYNONYMS = {
     "activities": ["activity", "actions", "action", "operations", "operation", "work", "working"],
     "last_activities": ["activity", "actions", "action", "operations", "operation", "work", "working"],
     "applications": ["application", "app", "apps"],
+    "application_activities": ["application-activities", "app_activities", "app-activities"],
+    "daily": ["by_day", "day"],
+    "url_activities": ["url-activities", "link_activities", "link-activities"],
     "urls": ["url", "link", "links"],
     "screenshots": ["shots", "screens", "images"],
     "notes": ["memos", "data"],
@@ -27,23 +30,19 @@ SYNONYMS = {
     "update_metadata": ["metadata_update", "set_metadata"],
     "update_members": ["members_update", "set_members"],
     "invites": ["invitations"],
-
-    # "application_activities"
-    # "daily"
-    # "url_activities"
-    # "clients"
-    # "locations"
-    # "client_invoices"
-    # "team_invoices"
-    # "time_off_policies"
-    # "time_off_requests"
-    # "attendance_schedules"
-    # "holidays"
-    # "job_sites"
-    # "timesheets"
-    # "attendance_shifts"
-    # "budget_histories"
-    # "integration_links"
-    # "user_links"
-    # "project_links"
+    "clients": ["client"],
+    "locations": ["location", "loc"],
+    "client_invoices": ["client-invoices"],
+    "team_invoices": ["team-invoices"],
+    "time_off_policies": ["time-off-policies"],
+    "time_off_requests": ["time-off-requests"],
+    "attendance_schedules": ["attendance"],
+    "holidays": ["rest"],
+    "job_sites": ["job-sites"],
+    "timesheets": ["time_sheets", "time-sheets", "time"],
+    "attendance_shifts": ["shifts"],
+    "budget_histories": ["budget", "budget-history"],
+    "integration_links": ["integrations"],
+    "user_links": ["user-links", "userlinks"],
+    "project_links": ["project-links", "projectlinks"],
 }

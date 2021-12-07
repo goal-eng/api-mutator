@@ -1,12 +1,13 @@
 import random
 import re
 from logging import getLogger
-from typing import Any
+from typing import Any, List
 
 import humps
 import requests
-from src.core.hubstaff import hubstaff
+from django.contrib.auth.models import User
 from src.core.synonyms import SYNONYMS
+from src.core.hubstaff import HubstaffV2
 
 log = getLogger(__name__)
 
@@ -14,7 +15,7 @@ METHODS = ['get', 'put', 'post', 'patch']
 LOCATIONS = ['header', 'query', 'body']  # 'path', 'formData'
 
 
-def permute_paths(swagger: dict, seed: int, meta: dict):
+def permute_paths(swagger: dict, seed: int):
     """
     Replaces parts of swagger paths with dictionary words.
 
@@ -61,7 +62,7 @@ def permute_paths(swagger: dict, seed: int, meta: dict):
     swagger['paths'] = {permute_path(path): methods for path, methods in swagger['paths'].items()}
 
 
-def permute_methods(swagger: dict, seed: int, meta: dict):
+def permute_methods(swagger: dict, seed: int):
     """
     Replaces methods of swagger paths with random ones and modifies locations of parameters according to the methods.
 
@@ -108,7 +109,7 @@ def permute_methods(swagger: dict, seed: int, meta: dict):
                     parameter['in'] = 'body'
 
 
-def permute_locations(swagger: dict, seed: int, meta: dict):
+def permute_locations(swagger: dict, seed: int):
     """
     Replaces locations of parameters (i.e. moves parameter from header to query string etc).
 
@@ -155,34 +156,33 @@ def permute_locations(swagger: dict, seed: int, meta: dict):
 
                 parameter['in'] = in_
                 if in_ == 'header':
-                    parameter['name'] = humps.pascalize(parameter['name'])
+                    parameter['name'] = humps.pascalize(parameter['name'].replace('[', '_').replace(']', ''))
                 elif in_ == 'query':
                     parameter['name'] = humps.decamelize(parameter['name'].replace('-', ''))
 
 
-
-def permute_credentials(request: requests.Request, meta: dict):
-
-    app_token = request.headers.get('App-Token')
+def check_and_remove_auth_headers(request: requests.Request, user: User):
+    app_token = request.headers.pop('App-Token', None)
     if not app_token:
         raise ValueError('Missing app token')
 
-    if app_token != meta['user'].api_credentials.app_token:
+    if app_token != user.api_credentials.app_token:
         raise ValueError('Wrong app token')
 
-    request.headers['App-Token'] = hubstaff.app_token
-
-    auth_token = request.headers.get('Auth-Token')
+    auth_token = request.headers.pop('Auth-Token', None)
     if not auth_token:
         raise ValueError('Missing auth token')
 
-    if auth_token != meta['user'].api_credentials.auth_token:
+    if auth_token != user.api_credentials.auth_token:
         raise ValueError('Wrong auth token')
 
-    request.headers['Auth-Token'] = hubstaff.auth_token
+
+def redirect_self_endpoint(request: requests.Request, hubstaff_user_id: int):
+    if request.url == f'{HubstaffV2.BASE_URL}/v2/users/me':
+        request.url = f'{HubstaffV2.BASE_URL}/v2/users/{hubstaff_user_id}'
 
 
-def permute_result(swagger: dict, seed: int, meta: dict):
+def permute_result(swagger: dict, seed: int):
     """
     Replaces result object with a list. Horrible.
 
@@ -258,24 +258,27 @@ def permute_result(swagger: dict, seed: int, meta: dict):
         }
 
 
-def permute_result_processor(result: Any, meta: dict) -> Any:
+def permute_result_processor(result: Any) -> Any:
     return {'result': result}
 
 
-def personal_filter_result_processor(data: Any, meta: dict) -> Any:
+def personal_filter_result_processor(
+    data: Any,
+    email: str,
+    hubstaff_user_id: int,
+    hubstaff_user_organization: dict,
+    hubstaff_user_projects: List[dict],
+) -> Any:
 
     assert isinstance(data, dict)
 
     # allowed values:
-    email = meta['user'].email
-    user_id = meta['user_data']['id']
-    organizations_names = {org['name'] for org in meta['user_data']['organizations']}
-    projects_names = {project['name'] for project in meta['user_data']['projects']}
-    projects_ids = {project['id'] for project in meta['user_data']['projects']}
+    organization_name = hubstaff_user_organization['name']
+    projects_names = {project['name'] for project in hubstaff_user_projects}
+    projects_ids = {project['id'] for project in hubstaff_user_projects}
 
     result = {}
     for key, content in data.items():
-
         if not isinstance(content, list) or not content:
             result[key] = content
             continue
@@ -287,13 +290,13 @@ def personal_filter_result_processor(data: Any, meta: dict) -> Any:
             result[key] = [item for item in content if item['user']['email'] == email]
 
         elif key == 'organizations':
-            result[key] = [item for item in content if item['name'] in organizations_names]
+            result[key] = [item for item in content if item['name'] in {organization_name}]
 
         elif key == 'projects':
             result[key] = [item for item in content if item['name'] in projects_names]
 
         elif 'user_id' in content[0]:
-            result[key] = [item for item in content if item['user_id'] == user_id]
+            result[key] = [item for item in content if item['user_id'] == hubstaff_user_id]
 
         elif 'project_id' in content[0]:
             result[key] = [item for item in content if item['project_id'] in projects_ids]

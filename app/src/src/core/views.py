@@ -1,29 +1,30 @@
 import json
 import logging
 from datetime import timedelta
-from functools import lru_cache
+from functools import lru_cache, partial
 from pprint import pformat
-from typing import Dict, Union
+from typing import Dict, List, Tuple, Union
 
 import requests
-from django.db import transaction
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.exceptions import SuspiciousOperation, PermissionDenied
-from django.http import JsonResponse, HttpResponse, HttpRequest, Http404
+from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.db import transaction
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
+from src.core.hubstaff import HubstaffV2
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure
-from src.core.hubstaff import hubstaff
-from src.core.permutations import permute_paths, permute_locations, permute_result, \
-    permute_credentials, personal_filter_result_processor, permute_result_processor
+from src.core.permutations import check_and_remove_auth_headers, permute_locations, permute_paths, permute_result, \
+                                  permute_result_processor, personal_filter_result_processor, redirect_self_endpoint
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
+hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
 
 
 @csrf_exempt
@@ -55,48 +56,130 @@ def api_user_update(request):
     })
 
 
+def get_hubstaff_data(email: str) -> Tuple[int, dict, List[dict]]:
+    # return Hubstaff user id, organization, projects
+    for organization in hubstaff.iter_organizations():
+        for user in hubstaff.iter_organization_users(organization['id']):
+            if user['email'] == email:
+                projects = list(hubstaff.iter_organization_projects(organization['id']))
+                return user['id'], organization, projects
+
+    raise ValueError(f'User with email {email} not found in Hubstaff API response')
+
+
+def patch_swagger_auth(swagger: dict):
+    """
+    Add App-Token and Auth-Token headers to all endpoints. In-place.
+    """
+    app_token = {
+        "in": "header",
+        "name": "App-Token",
+        "description": "User's application token",
+        "type": "string",
+        "required": True
+    }
+    auth_token = {
+        "in": "header",
+        "name": "Auth-Token",
+        "description": "User's authentication token",
+        "type": "string",
+        "required": True
+    }
+
+    for path in swagger['paths'].values():
+        for method_data in path.values():
+            method_data['parameters'] = [app_token, auth_token, *method_data.get('parameters', [])]
+
+    swagger['paths']['/v2/users/auth'] = {
+        "post": {
+            "summary": "Retrieve auth token",
+            "description": "Returns auth token for current user.",
+            "produces": ["application/json"],
+            "parameters": [
+                {
+                    "in": "formData",
+                    "name": "email",
+                    "description": "User's email",
+                    "type": "string",
+                    "required": True
+                },
+                {
+                    "in": "formData",
+                    "name": "password",
+                    "description": "User's password",
+                    "type": "string",
+                    "required": True
+                },
+                app_token,
+            ],
+            "responses": {
+                "200": {
+                    "description": "Auth token",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "auth_token": {
+                                "type": "string",
+                                "description": "Auth token"
+                            }
+                        }
+                    }
+                },
+                "400": {
+                    "description": "Invalid parameters",
+                    "schema": {
+                        "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                    }
+                },
+                "401": {
+                    "description": "Unauthorized",
+                    "schema": {
+                        "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                    }
+                },
+                "429": {
+                    "description": "Rate limit exceeded",
+                    "schema": {
+                        "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                    }
+                }
+            },
+            "tags": [
+                "users"
+            ],
+            "operationId": "getV2Auth"
+        }
+    }
+
+
 # save ApiMixer instance in memory, so that we don't regenerate mappings on each request
 @lru_cache(maxsize=32)
 def get_mixer(user_pk: int) -> ApiMixer:
-
-    user_obj = User.objects.get(pk=user_pk)
-
-    # get user ID and project ID
-    offset = 0
-    while True:
-        users = hubstaff.get('/users', params={
-            'organization_memberships': True,
-            'project_memberships': True,
-            'offset': offset,
-        })['users']
-
-        try:
-            user_data = next(user for user in users if user['email'] == user_obj.email)
-            break
-        except StopIteration:
-            offset += len(users)
-
-        if not users:
-            raise ValueError(f'User with email {user_obj.email} not found in Hubstaff API /users response: {users}')
+    user = User.objects.get(pk=user_pk)
+    hubstaff_user_id, hubstaff_user_organization, hubstaff_user_projects = get_hubstaff_data(user.email)
+    swagger = json.loads(settings.SWAGGER_FILE_PATH.read_text())
+    patch_swagger_auth(swagger)
 
     return ApiMixer(
-        swagger=json.loads(settings.SWAGGER_FILE_PATH.read_text()),
-        seed=user_obj.pk,
-        meta={
-            'user': user_obj,
-            'user_data': user_data,
-        },
+        swagger=swagger,
+        seed=user.pk,
         permutations=(
             permute_paths,
-            # permute_methods,
             permute_locations,
             permute_result,
         ),
         request_processors=(
-            permute_credentials,
+            partial(check_and_remove_auth_headers, user=user),
+            partial(redirect_self_endpoint, hubstaff_user_id=hubstaff_user_id),
         ),
         result_processors=(
-            personal_filter_result_processor,
+            partial(
+                personal_filter_result_processor,
+                email=user.email,
+                hubstaff_user_id=hubstaff_user_id,
+                hubstaff_user_organization=hubstaff_user_organization,
+                hubstaff_user_projects=hubstaff_user_projects,
+            ),
             permute_result_processor,
         ),
     )
@@ -104,6 +187,12 @@ def get_mixer(user_pk: int) -> ApiMixer:
 
 class ApiDescriptionView(TemplateView):
     template_name = 'api.html'
+
+    def get_context_data(self, **kwargs):
+        return {
+            **super().get_context_data(**kwargs),
+            'SUPPORT_EMAIL': settings.SUPPORT_EMAIL,
+        }
 
 
 class SwaggerView(View):
@@ -169,11 +258,11 @@ def jsonify_exceptions(fn: callable) -> callable:
         try:
             return fn(*args, **kwargs)
         except Exception as exc:
-            return JsonResponse(status=400, data=permute_result_processor({
-                'error': str(exc),
-                'help': f'Please contact {settings.SUPPORT_EMAIL} if you think '
-                        f'the API is misbehaving or you have any questions',
-            }, meta={}))
+            payload = {'error': str(exc)}
+            if settings.SUPPORT_EMAIL:
+                payload['help'] = f'Please contact {settings.SUPPORT_EMAIL} if you think ' \
+                                  f'the API is misbehaving or you have any questions'
+            return JsonResponse(status=400, data=permute_result_processor(payload))
 
     return wrapper
 
@@ -181,10 +270,10 @@ def jsonify_exceptions(fn: callable) -> callable:
 @csrf_exempt
 @jsonify_exceptions
 def proxy(request, user_pk: int):
-    user_pk = int(user_pk)
-
     if AccessAttemptFailure.objects.filter(datetime__gte=now() - timedelta(hours=24)).count() >= 10:
         raise PermissionDenied('Proxy is currently unavailable, please try again later')
+
+    user_pk = int(user_pk)
 
     user = get_object_or_404(User, pk=user_pk)
     assert user.email, f'User has no email: {user}'
@@ -198,7 +287,7 @@ def proxy(request, user_pk: int):
 
     # convert each parameter to original (non-mutated) one, or drop if parameter is redundant
     parameters = {}
-    mixer = get_mixer(user_pk=user.pk)
+    mixer = get_mixer(user_pk=user_pk)
     for permuted_parameter, value in permuted_parameters.items():
         try:
             log.debug(f'Permuted parameter: {permuted_parameter}')
@@ -229,33 +318,32 @@ def proxy(request, user_pk: int):
     # make a request with original (pure) parameters
     request = _params_to_request(host='https://' + mixer.swagger['host'], parameters=parameters)
 
-    if request.url == 'https://api.hubstaff.com/v1/auth':
+    if request.url == f'{hubstaff.BASE_URL}/v2/users/auth':
         # this is a hack so that candidates don't reach real auth endpoint but instead
-        # get fake credentials from out proxy
+        # get fake credentials from this proxy
 
         if user.email != (email := request.data.get('email', '')):
             raise ValueError(f'Wrong email provided: {email}')
 
-        if not user.check_password(request.data.get('password')):
+        if user.api_credentials.password != request.data.get('password'):
             raise ValueError('Password mismatch')
 
         if user.api_credentials.app_token != request.headers.get('App-Token', ''):
             raise ValueError('App-Token mismatch')
 
         result = {
-            'id': None,
-            'name': None,
-            'last_activity': None,
             'auth_token': user.api_credentials.auth_token,
         }
         status_code = 200
 
     else:
-        for request_processor in mixer.request_processors:
-            request_processor(request, meta=mixer.meta)  # TODO: refactor
+        if request.method.lower() != 'get':
+            raise PermissionDenied('Only GET method is allowed :-O')
 
-        prepared_request = session.prepare_request(request)
-        response = session.send(prepared_request, timeout=(60, 60))
+        for request_processor in mixer.request_processors:
+            request_processor(request)
+
+        response = hubstaff.send(request)
 
         status_code = response.status_code
         if status_code == 401:
@@ -264,7 +352,7 @@ def proxy(request, user_pk: int):
         result = response.json()
 
     for processor in mixer.result_processors:
-        result = processor(result, meta=mixer.meta)
+        result = processor(result)
 
     return JsonResponse(status=status_code, data=result)
 

@@ -30,7 +30,8 @@ class Parameter:
 
     @cached_property
     def re_path(self) -> re.Pattern:
-        return re.compile('^' + re.sub(r'\{(.+?)\}', r'(?P<\1>[^/]+)', self.path) + '$')  # /users/{id}/projects -> /users/.*?/projects
+        # /users/{id}/projects -> /users/(?P<id>\d+)/projects
+        return re.compile('^' + re.sub(r'\{(.+?)\}', r'(?P<\1>\\d+)', self.path) + '$')
 
     def __eq__(self, other) -> bool:
         """
@@ -90,7 +91,6 @@ class ApiMixer:
 
     swagger: dict
     seed: int
-    meta: dict = field(default_factory=dict)
 
     permutations: Iterable[callable] = tuple()
     request_processors: Iterable[callable] = tuple()
@@ -101,7 +101,7 @@ class ApiMixer:
         # apply permutations on swagger copy
         self.permuted_swagger = deepcopy(self.swagger)
         for permutation in self.permutations:
-            permutation(self.permuted_swagger, self.seed, self.meta)
+            permutation(self.permuted_swagger, self.seed)
 
         # generate all parameters for original and permuted swagger definitions
         self.original_parameters = self.as_parameters(self.swagger)
