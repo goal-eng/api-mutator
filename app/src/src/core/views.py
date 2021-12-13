@@ -71,6 +71,10 @@ def patch_swagger_auth(swagger: dict):
     """
     Add App-Token and Auth-Token headers to all endpoints. In-place.
     """
+
+    del swagger['info']
+    del swagger['securityDefinitions']
+
     app_token = {
         "in": "header",
         "name": "App-Token",

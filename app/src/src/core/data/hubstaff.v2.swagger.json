@@ -1,8 +1,29 @@
 {
+    "info": {
+        "title": "Hubstaff V2 API",
+        "contact": {
+            "email": "api@hubstaff.com"
+        },
+        "version": "2.0"
+    },
     "swagger": "2.0",
     "produces": [
         "application/json"
     ],
+    "securityDefinitions": {
+        "oauth2": {
+            "type": "oauth2",
+            "description": "Hubstaff Account OpenID Connect Authentication",
+            "flow": "accessCode",
+            "nonce": true,
+            "authorizationUrl": "https://account.hubstaff.com/authorizations/new",
+            "tokenUrl": "https://account.hubstaff.com/access_tokens",
+            "scopes": {
+                "hubstaff:write": "Write only access to the Hubstaff API",
+                "hubstaff:read": "Read only access to the Hubstaff API"
+            }
+        }
+    },
     "host": "api.hubstaff.com",
     "tags": [
         {
@@ -64,6 +85,10 @@
         {
             "name": "locations",
             "description": "Locations endpoints"
+        },
+        {
+            "name": "job_site_visits",
+            "description": "Job site visits endpoints"
         },
         {
             "name": "client_invoices",
@@ -332,7 +357,9 @@
                                 "teams",
                                 "track_profitability",
                                 "expenses",
-                                "work_breaks"
+                                "work_breaks",
+                                "insights",
+                                "embedded_tasks"
                             ]
                         },
                         "required": false
@@ -713,6 +740,19 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "clients"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -775,7 +815,7 @@
         "/v2/organizations/{organization_id}/members": {
             "get": {
                 "summary": "Retrieve members for an organization",
-                "description": "Returns a collection of users that are a member of the given organization.\n\n*trackable* - Whether the user can track time.  This is one of 3 values\n- *false* -- meaning tracking has been explicitly disabled for this user regardless of their role\n- *true* -- meaning they are allowed to track time\n- *viewer* -- meaning they are allowed to track time, however as they are only a project viewer (or no\n  memberships) they implicitly can not track on any project\n\n*membership_role* - The basic role in this organization\n- *owner* - An owner of the organization.  This member can do anything within the organization.\n- *manager* - An manager of the organization.  This member can do anything within the organization\n  except things to do with money. (payroll, invoicing, account billing)\n- *user* - (By project). A member of the organization where permissions are defined by their project memberships\n\n*effective_role* - represents an effective role that combines a member's organization role and their project roles\n- *organization_owner* - The member is an organization owner\n- *organization_manager* - The member is an organization manager\n- *project_manager* - The member is an organization user and a manager on all projects and teams\n- *project_user* - The member is an organization user and a user on all projects and teams\n- *project_viewer* - The member is an organization user and a viewer on all projects and teams. Or have no project/team memberships.\n- *by_project* - The member is an organization user and has mixed roles on their projects and team memberships.\n\n\n",
+                "description": "Returns a collection of users that are a member of the given organization.\n\n*trackable* - Whether the user can track time.  This is one of 3 values\n- *false* -- meaning tracking has been explicitly disabled for this user regardless of their role\n- *true* -- meaning they are allowed to track time\n- *viewer* -- meaning they are allowed to track time, however as they are only a project viewer (or no\n  memberships) they implicitly can not track on any project\n\n*membership_role* - The basic role in this organization\n- *owner* - An owner of the organization.  This member can do anything within the organization.\n- *manager* - An manager of the organization.  This member can do anything within the organization\n  except things to do with money. (payroll, invoicing, account billing)\n- *user* - (By project). A member of the organization where permissions are defined by their project memberships\n\n*effective_role* - represents an effective role that combines a member's organization role and their project roles\n- *organization_owner* - The member is an organization owner\n- *organization_manager* - The member is an organization manager\n- *project_manager* - The member is an organization user and a manager on all projects and teams\n- *project_user* - The member is an organization user and a user on all projects and teams\n- *project_viewer* - The member is an organization user and a viewer on all projects and teams\n- *by_project* - The member is an organization user and has mixed roles on their projects and team memberships (advanced in the web UI)\n- *unassigned* - The member has no assigned role and no project memberships (No role in the web UI)\n\n\n",
                 "produces": [
                     "application/json"
                 ],
@@ -809,6 +849,20 @@
                         "name": "include_projects",
                         "description": "Include project memberships for this member",
                         "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -901,6 +955,21 @@
                         "name": "include_removed",
                         "description": "Include users that were removed",
                         "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -1201,6 +1270,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -1331,6 +1414,21 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -1469,6 +1567,21 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -1599,6 +1712,21 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -1737,6 +1865,21 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -1871,6 +2014,21 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -1990,6 +2148,20 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
                         },
                         "required": false
                     },
@@ -2128,6 +2300,21 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -2262,6 +2449,21 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -2388,6 +2590,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -2507,6 +2723,20 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
                         },
                         "required": false
                     },
@@ -2641,6 +2871,21 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -2817,6 +3062,19 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "projects"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -2916,6 +3174,20 @@
                         "type": "string",
                         "format": "date-time",
                         "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
+                        },
+                        "required": false
                     },
                     {
                         "in": "path",
@@ -3049,6 +3321,22 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "clients",
+                                "projects",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -3177,6 +3465,20 @@
                         "name": "include_line_items",
                         "description": "Include invoice line items",
                         "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -3327,7 +3629,7 @@
         "/v2/organizations/{organization_id}/time_off_requests": {
             "get": {
                 "summary": "Retrieve time off requests",
-                "description": "Returns a collection of team payments.\n",
+                "description": "Returns a collection of time off requests.\n",
                 "produces": [
                     "application/json"
                 ],
@@ -3363,6 +3665,20 @@
                         "description": "Stop time (ISO 8601, Exclusive)",
                         "type": "string",
                         "format": "date-time",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "time_off_policies"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -3636,6 +3952,19 @@
                         "type": "string",
                         "format": "date",
                         "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
+                        },
+                        "required": false
                     },
                     {
                         "in": "path",
@@ -3915,10 +4244,262 @@
                 "operationId": "getV2OrganizationsOrganizationIdJobSites"
             }
         },
+        "/v2/organizations/{organization_id}/job_site_visits": {
+            "get": {
+                "summary": "Retrieve job site visits",
+                "description": "Returns a collection of job site visits.\n",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page_start_id",
+                        "description": "The page start ID.",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_limit",
+                        "description": "The default page size",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "user_ids",
+                        "description": "List of user IDs",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "enter[start]",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "enter[stop]",
+                        "description": "Stop time (ISO 8601, exclusive)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "job_sites"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "path",
+                        "name": "organization_id",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of job site visits",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "job_site_visits": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/JobSiteVisit"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Could not find record",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    }
+                },
+                "tags": [
+                    "job_site_visits"
+                ],
+                "operationId": "getV2OrganizationsOrganizationIdJobSiteVisits"
+            }
+        },
+        "/v2/organizations/{organization_id}/passive_job_site_visits": {
+            "get": {
+                "summary": "Retrieve passive job site visits",
+                "description": "Returns a collection of passive job site visits.\n",
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page_start_id",
+                        "description": "The page start ID.",
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0,
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "page_limit",
+                        "description": "The default page size",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "user_ids",
+                        "description": "List of user IDs",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "enter[start]",
+                        "description": "Start time (ISO 8601)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "enter[stop]",
+                        "description": "Stop time (ISO 8601, exclusive)",
+                        "type": "string",
+                        "format": "date-time",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "job_sites"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "path",
+                        "name": "organization_id",
+                        "type": "integer",
+                        "format": "int32",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of passive job site visits",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "passive_job_site_visits": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/PassiveJobSiteVisit"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "403": {
+                        "description": "API access is only for organizations on an active plan",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Could not find record",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/Hubstaff_Public_V2_Entities_Error"
+                        }
+                    }
+                },
+                "tags": [
+                    "job_site_visits"
+                ],
+                "operationId": "getV2OrganizationsOrganizationIdPassiveJobSiteVisits"
+            }
+        },
         "/v2/organizations/{organization_id}/timesheets": {
             "get": {
                 "summary": "Retrieve timesheets",
-                "description": "Returns a collection of timesheets.\n",
+                "description": "Returns a collection of timesheet approval records.\n\nNote this is not the same thing as time_entries (spans of time worked). These are aggregate records\nused by the timesheet approval system.\n",
                 "produces": [
                     "application/json"
                 ],
@@ -3967,6 +4548,19 @@
                             "approved",
                             "denied"
                         ],
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -4071,6 +4665,20 @@
                         "required": true
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "attendance_schedules"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "organization_id",
                         "type": "integer",
@@ -4133,7 +4741,7 @@
         "/v2/organizations/{organization_id}/budget_histories": {
             "get": {
                 "summary": "Return list of budget histories",
-                "description": "Returns the budget histories for the given organization.\n\nThe project_ids and client_ids filters are processed as a complete set.\n\n- If project_ids 1,2,3 and client_ids 4,5,6 are provided then all budget histories for those\nproject and clients will be returned.\n- If only project_ids 1,2,3 (no client_ids filter) are provided then only budget histories for\nthose projects will be returned (no client budgets at all).\n- If only client_ids 1,2,3 (no project_ids filter) are provided then only budget histories for\nthose clients will be returned (no project budgets at all).\n\nFurther resource may be specified to restrict only returning budget histories for either projects\nor clients.\nThe resource filter is combined with the project_ids/client_ids filters thus\n- If only project_ids is provided and resource = 'client' then no records will be returned\n\nThe start_date filters only apply to the starting date of the start_date of the budget history records.\nThus to fetch only budget histories for this month for all projects specify this filter\n- resource=project and start_date[start]=2021-06-01\n\n",
+                "description": "Returns the budget histories for the given organization.\n\nThe project_ids and client_ids filters are processed as a complete set.\n\n- If project_ids 1,2,3 and client_ids 4,5,6 are provided then all budget histories for those\nproject and clients will be returned.\n- If only project_ids 1,2,3 (no client_ids filter) are provided then only budget histories for\nthose projects will be returned (no client budgets at all).\n- If only client_ids 1,2,3 (no project_ids filter) are provided then only budget histories for\nthose clients will be returned (no project budgets at all).\n\nFurther resource may be specified to restrict only returning budget histories for either projects\nor clients.\nThe resource filter is combined with the project_ids/client_ids filters thus\n- If only project_ids is provided and resource = 'client' then no records will be returned\n\nThe start_date filters only apply to the starting date of the start_date of the budget history records.\nThus to fetch only budget histories for this month for all projects specify this filter\n- resource=project and start_date[start]=2021-12-01\n\n",
                 "produces": [
                     "application/json"
                 ],
@@ -4202,6 +4810,20 @@
                         "description": "Include budget histories with a start date on or before this date (ISO 8601)",
                         "type": "string",
                         "format": "date",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "clients",
+                                "projects"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -4391,6 +5013,19 @@
                         "required": true
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -4514,6 +5149,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -4622,6 +5271,19 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
                         },
                         "required": false
                     },
@@ -4815,6 +5477,19 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -4934,6 +5609,20 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -5061,6 +5750,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -5180,6 +5883,21 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "projects",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -5392,6 +6110,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -5511,6 +6243,20 @@
                         "items": {
                             "type": "integer",
                             "format": "int32"
+                        },
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
                         },
                         "required": false
                     },
@@ -5638,6 +6384,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -5761,6 +6521,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -5853,6 +6627,20 @@
                         "required": false
                     },
                     {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users",
+                                "tasks"
+                            ]
+                        },
+                        "required": false
+                    },
+                    {
                         "in": "path",
                         "name": "project_id",
                         "type": "integer",
@@ -5942,6 +6730,19 @@
                         "name": "include_removed",
                         "description": "Include members that were removed from the project",
                         "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "in": "query",
+                        "name": "include",
+                        "description": "Specify related data to side load.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "users"
+                            ]
+                        },
                         "required": false
                     },
                     {
@@ -8007,6 +8808,10 @@
                     "format": "date-time",
                     "description": "Last client activity of user"
                 },
+                "online": {
+                    "type": "boolean",
+                    "description": "Whether we consider the user online or not"
+                },
                 "last_project_id": {
                     "type": "integer",
                     "format": "int64",
@@ -8668,6 +9473,15 @@
                     "format": "int32",
                     "description": "Total time worked in seconds"
                 },
+                "input_tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time worked in seconds when inputs (keyboard, mouse) were active"
+                },
+                "tracks_input": {
+                    "type": "boolean",
+                    "description": "Whether the inputs activities (keyboard, mouse) were tracked"
+                },
                 "billable": {
                     "type": "boolean",
                     "description": "Whether the time is billable"
@@ -8755,6 +9569,11 @@
                     "type": "integer",
                     "format": "int32",
                     "description": "Total time worked in seconds"
+                },
+                "input_tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time worked in seconds when inputs (keyboard, mouse) were active"
                 },
                 "manual": {
                     "type": "integer",
@@ -9429,6 +10248,14 @@
                             },
                             "description": "Project ids included in generated data"
                         },
+                        "task_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "format": "int64"
+                            },
+                            "description": "Tasks ids included in generated data (Client invoices only)"
+                        },
                         "start_date": {
                             "type": "string",
                             "format": "date",
@@ -9715,6 +10542,11 @@
                     "format": "int64",
                     "description": "Team payment detail ID"
                 },
+                "team_payment_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Team payment ID"
+                },
                 "created_at": {
                     "type": "string",
                     "format": "date-time",
@@ -9910,6 +10742,106 @@
             },
             "description": "JobSite model"
         },
+        "JobSiteVisit": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Job Site ID"
+                },
+                "job_site_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Job site ID"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "User ID"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Job site visit status"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the record was created"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the record was last updated"
+                },
+                "enter_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the user entered the site"
+                },
+                "exit_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the user exited the site"
+                },
+                "last_seen_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The last time the user was seen at the site"
+                }
+            },
+            "description": "JobSiteVisit model"
+        },
+        "PassiveJobSiteVisit": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Job Site ID"
+                },
+                "job_site_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Job site ID"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "User ID"
+                },
+                "status": {
+                    "type": "string",
+                    "description": "Job site visit status"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the record was created"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When the record was last updated"
+                },
+                "enter_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the user entered the site"
+                },
+                "exit_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Time the user exited the site"
+                },
+                "last_seen_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "The last time the user was seen at the site"
+                }
+            },
+            "description": "PassiveJobSiteVisit model"
+        },
         "Timesheet": {
             "type": "object",
             "properties": {
@@ -9937,10 +10869,10 @@
                     "format": "int64",
                     "description": "Team payment ID"
                 },
-                "client_invoice_id": {
+                "team_invoice_id": {
                     "type": "integer",
                     "format": "int64",
-                    "description": "Client invoice ID"
+                    "description": "Team invoice ID"
                 },
                 "status": {
                     "type": "string",
@@ -9965,6 +10897,11 @@
                     "type": "integer",
                     "format": "int32",
                     "description": "Total time tracked (minutes)"
+                },
+                "input_tracked": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Total time worked in seconds when inputs (keyboard, mouse) were active"
                 },
                 "start_date": {
                     "type": "string",
@@ -10025,6 +10962,11 @@
                     "type": "integer",
                     "format": "int64",
                     "description": "Organization ID"
+                },
+                "attendance_schedule_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Attendance schedule ID"
                 },
                 "created_at": {
                     "type": "string",
