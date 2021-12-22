@@ -16,6 +16,7 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
+from sentry_sdk import capture_exception
 from src.core.hubstaff import HubstaffV2
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure
@@ -25,6 +26,10 @@ from src.core.permutations import check_and_remove_auth_headers, permute_locatio
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
 hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
+
+
+class HubstaffUserNotFound(Exception):
+    pass
 
 
 @csrf_exempt
@@ -64,7 +69,7 @@ def get_hubstaff_data(email: str) -> Tuple[int, dict, List[dict]]:
                 projects = list(hubstaff.iter_organization_projects(organization['id']))
                 return user['id'], organization, projects
 
-    raise ValueError(f'User with email {email} not found in Hubstaff API response')
+    raise HubstaffUserNotFound(f'User with email {email} not found in Hubstaff API response')
 
 
 def patch_swagger_auth(swagger: dict):
@@ -201,7 +206,17 @@ class ApiDescriptionView(TemplateView):
 
 class SwaggerView(View):
     def get(self, *args, **kwargs):
-        mixer = get_mixer(user_pk=self.request.user.pk)
+        try:
+            mixer = get_mixer(user_pk=self.request.user.pk)
+        except HubstaffUserNotFound as exc:
+            capture_exception(exc)
+            return JsonResponse({
+                "info": {
+                    "title": "Unable to load API definitions",
+                    "description": f"Unfortunately, we cannot find user with email {self.request.user.email} in Hubstaff.\nPlease ensure that you accepted email invitation and thus joined Hubstaff organization.",
+                },
+                "swagger": "2.0",
+            })
         swagger = mixer.permuted_swagger
         swagger['host'] = self.request.META['HTTP_HOST']
         return JsonResponse(swagger)
