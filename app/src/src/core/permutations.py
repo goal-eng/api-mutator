@@ -274,6 +274,7 @@ def personal_filter_result_processor(
 
     # allowed values:
     organization_name = hubstaff_user_organization['name']
+    organization_id = hubstaff_user_organization['id']
     projects_names = {project['name'] for project in hubstaff_user_projects}
     projects_ids = {project['id'] for project in hubstaff_user_projects}
 
@@ -290,10 +291,10 @@ def personal_filter_result_processor(
             result[key] = [item for item in content if item['user']['email'] == email]
 
         elif key == 'organizations':
-            result[key] = [item for item in content if item['name'] in {organization_name}]
+            result[key] = [item for item in content if item['name'] == organization_name or item['id'] == organization_id]
 
         elif key == 'projects':
-            result[key] = [item for item in content if item['name'] in projects_names]
+            result[key] = [item for item in content if item['name'] in projects_names or item['id'] in projects_ids]
 
         elif 'user_id' in content[0]:
             result[key] = [item for item in content if item['user_id'] == hubstaff_user_id]
@@ -304,5 +305,9 @@ def personal_filter_result_processor(
         else:
             log.debug(f'No filters applied for "{key}": {content}')
             result[key] = content
+
+        hidden_items = [item for item in content if item not in result[key]]
+        if hidden_items:
+            log.info(f'Hidden items for {key=}: {hidden_items} ({hubstaff_user_id=}, {hubstaff_user_organization=}, {hubstaff_user_projects=})')
 
     return result
