@@ -289,17 +289,13 @@ def jsonify_exceptions(fn: callable) -> callable:
 @csrf_exempt
 @jsonify_exceptions
 def proxy(request, user_pk: int):
-    if AccessAttemptFailure.objects.filter(datetime__gte=now() - timedelta(hours=24)).count() >= 10:
+    if AccessAttemptFailure.objects.filter(datetime__gte=now() - timedelta(hours=1)).count() >= 10:
         raise PermissionDenied('Proxy is currently unavailable, please try again later')
 
     user_pk = int(user_pk)
 
     user = get_object_or_404(User, pk=user_pk)
     assert user.email, f'User has no email: {user}'
-    if user.failed_attempts.filter(datetime__gte=now() - timedelta(hours=24)).count() > \
-            settings.HUBSTAFF_MAX_FAILED_BEFORE_BLOCK:
-        raise SuspiciousOperation('Too many attempts to access Hubstaff API with wrong credentials; '
-                                  'please wait 24h before further attempts')
 
     # convert user's request to list of parameters
     permuted_parameters = _request_to_params(request)
