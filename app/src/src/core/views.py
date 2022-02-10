@@ -69,7 +69,7 @@ def get_hubstaff_data(email: str) -> Tuple[int, dict, List[dict]]:
                 projects = list(hubstaff.iter_organization_projects(organization['id']))
                 return user['id'], organization, projects
 
-    raise HubstaffUserNotFound(f'User with email {email} not found in Hubstaff API response')
+    raise HubstaffUserNotFound('User not found in Hubstaff API response')
 
 
 def patch_swagger_auth(swagger: dict):
