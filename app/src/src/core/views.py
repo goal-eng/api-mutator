@@ -6,6 +6,7 @@ from pprint import pformat
 from typing import Dict, List, Tuple, Union
 
 import requests
+import sentry_sdk
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
@@ -16,7 +17,6 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
-from sentry_sdk import capture_exception
 from src.core.hubstaff import HubstaffV2
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure
@@ -29,6 +29,10 @@ hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
 
 
 class HubstaffUserNotFound(Exception):
+    pass
+
+
+class ParameterError(Exception):
     pass
 
 
@@ -175,7 +179,7 @@ def get_mixer(user_pk: int) -> ApiMixer:
         permutations=(
             permute_paths,
             permute_locations,
-            permute_result,
+            # permute_result,
         ),
         request_processors=(
             partial(check_and_remove_auth_headers, user=user),
@@ -189,7 +193,7 @@ def get_mixer(user_pk: int) -> ApiMixer:
                 hubstaff_user_organization=hubstaff_user_organization,
                 hubstaff_user_projects=hubstaff_user_projects,
             ),
-            permute_result_processor,
+            # permute_result_processor,
         ),
     )
 
@@ -209,11 +213,11 @@ class SwaggerView(View):
         try:
             mixer = get_mixer(user_pk=self.request.user.pk)
         except HubstaffUserNotFound as exc:
-            capture_exception(exc)
+            sentry_sdk.capture_exception(exc)
             return JsonResponse({
                 "info": {
                     "title": "Unable to load API definitions",
-                    "description": f"Unfortunately, we cannot find user with email {self.request.user.email} in Hubstaff.\nPlease ensure that you accepted email invitation and thus joined Hubstaff organization.",
+                    "description": "Unfortunately, we cannot find user with your email in Hubstaff.\nPlease ensure that you accepted email invitation and thus joined Hubstaff organization.",
                 },
                 "swagger": "2.0",
             })
@@ -272,16 +276,17 @@ def _params_to_request(host: str, parameters: Dict[Parameter, Union[str, int]]) 
 
 
 def jsonify_exceptions(fn: callable) -> callable:
-
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
+        except (PermissionDenied, ParameterError, ValueError) as exc:
+            payload = {'code': exc.__class__.__name__.lower(), 'error': str(exc)}
+            return JsonResponse(status=400, data=payload)
         except Exception as exc:
-            payload = {'error': str(exc)}
-            if settings.SUPPORT_EMAIL:
-                payload['help'] = f'Please contact {settings.SUPPORT_EMAIL} if you think ' \
-                                  f'the API is misbehaving or you have any questions'
-            return JsonResponse(status=400, data=permute_result_processor(payload))
+            sentry_sdk.capture_exception(exc)
+            log.error(exc)
+            payload = {'code': 'error', 'error': 'Something went wrong, we\'re investigating'}
+            return JsonResponse(status=500, data=payload)
 
     return wrapper
 
@@ -320,7 +325,7 @@ def proxy(request, user_pk: int):
                 log.debug(f'Ignoring unexpected {permuted_parameter.in_} parameter: {permuted_parameter}')
                 continue  # we ignore redundant headers
 
-            raise ValueError(
+            raise ParameterError(
                 f'Unexpected parameter: '
                 f'method="{permuted_parameter.method.upper()}" path="{permuted_parameter.path}" '
                 f'location="{permuted_parameter.in_.upper()}" '
@@ -338,13 +343,13 @@ def proxy(request, user_pk: int):
         # get fake credentials from this proxy
 
         if user.email != (email := request.data.get('email', '')):
-            raise ValueError(f'Wrong email provided: {email}')
+            raise ParameterError(f'Wrong email provided: {email}')
 
         if user.api_credentials.password != request.data.get('password'):
-            raise ValueError('Password mismatch')
+            raise ParameterError('Password mismatch')
 
         if user.api_credentials.app_token != request.headers.get('App-Token', ''):
-            raise ValueError('App-Token mismatch')
+            raise ParameterError('App-Token mismatch')
 
         result = {
             'auth_token': user.api_credentials.auth_token,
