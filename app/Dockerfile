@@ -33,4 +33,4 @@ COPY --from=base-image /root/ /root/
 RUN grep psycopg2 requirements.txt && apk add --no-cache libpq || true
 EXPOSE 8000
 
-CMD ["gunicorn", "--workers=3", "--bind=0.0.0.0:8000", "src.wsgi:application"]
+CMD ["gunicorn", "--workers=1", "--bind=0.0.0.0:8000", "src.wsgi:application"]
