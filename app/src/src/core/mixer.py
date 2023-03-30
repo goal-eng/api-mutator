@@ -2,7 +2,8 @@ import json
 import re
 from argparse import ArgumentParser
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from contextlib import suppress
 from functools import cached_property
 from logging import getLogger
 from pathlib import Path
@@ -56,11 +57,14 @@ class Parameter:
                 continue
 
             if field_ == 'path':
-                if '{' in val1 and self.re_path.match(val2):
-                    continue
 
-                elif '{' in val2 and other.re_path.match(val1):
-                    continue
+                with suppress(re.error):
+                    if '{' in val1 and self.re_path.match(val2):
+                        continue
+
+                with suppress(re.error):
+                    if '{' in val2 and other.re_path.match(val1):
+                        continue
 
             return False
 
