@@ -168,6 +168,14 @@ SWAGGER_FILE_PATH = Path(__file__).parent / 'core' / 'data' / 'hubstaff.v2.swagg
 HUBSTAFF_REFRESH_TOKEN = env('HUBSTAFF_REFRESH_TOKEN', default='')
 SUPPORT_EMAIL = env('SUPPORT_EMAIL', default='')
 
+JIRA_API_URL = env('JIRA_API_URL', default='')
+JIRA_API_AUTH_EMAIL = env('JIRA_API_AUTH_EMAIL', default='')
+JIRA_API_AUTH_TOKEN = env('JIRA_API_AUTH_TOKEN', default='')
+JIRA_PROJECT_KEY = env('JIRA_PROJECT_KEY', default='')
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 30 * 1024 * 1024 # 30MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 30 * 1024 * 1024 # 30MB
+
 if env('SENTRY_DSN', default=''):
     sentry_logging = LoggingIntegration(
         level=logging.INFO,  # Capture info and above as breadcrumbs

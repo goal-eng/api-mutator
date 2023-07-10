@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <style>
+        ul.errorlist li {
+            color: red;
+        }
+    </style>
+    <div class="container pt-4">
+        <div class="row">
+            <div class="col col-md-6 mx-auto text-center alert alert-info">
+                <!-- {% if form.zip_file.errors %}
+                    <div class="error">{{ form.zip_file.errors }}</div>
+                {% endif %} -->
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="text-{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

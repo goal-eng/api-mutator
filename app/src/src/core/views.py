@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Union
 import requests
 import sentry_sdk
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
 from django.db import transaction
@@ -17,7 +18,10 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
+from django.views.generic.edit import FormView
+from src.core.forms import SubmitTaskForm
 from src.core.hubstaff import HubstaffV2
+from src.core.jira import JiraV3
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure
 from src.core.permutations import check_and_remove_auth_headers, permute_locations, permute_paths, permute_result, \
@@ -26,6 +30,7 @@ from src.core.permutations import check_and_remove_auth_headers, permute_locatio
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
 hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
+jira = JiraV3()
 
 
 class HubstaffUserNotFound(Exception):
@@ -375,6 +380,26 @@ def proxy(request, user_pk: int):
         result = processor(result)
 
     return JsonResponse(status=status_code, data=result)
+
+
+class SubmitTaskView(FormView):
+    template_name = 'submit_task.html'
+    form_class = SubmitTaskForm
+
+    def form_valid(self, form):
+        zip_file = form.cleaned_data.get('zip_file')
+
+        try:
+            issue_summary = 'Hubstaff bot - ' + self.request.user.email
+            new_issue = jira.create_issue(settings.JIRA_PROJECT_KEY, issue_summary, 'Task')
+            jira.add_issue_attachment(new_issue['id'], zip_file)
+            messages.success(self.request, 'Your task is successfully submitted')
+        except Exception as exc:
+            sentry_sdk.capture_exception(exc)
+            log.error(exc)
+            messages.error(self.request, 'Something went wrong, we\'re investigating', 'danger')
+    
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 def handler404(request, exception):
