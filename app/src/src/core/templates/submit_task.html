@@ -18,6 +18,7 @@
                 {% endif %}
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
+                    <p>Submit your solution here.</p>
                     {{ form.as_p }}
                     <button type="submit">Submit</button>
                 </form>

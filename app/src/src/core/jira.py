@@ -32,7 +32,7 @@ class JiraV3:
     get = partialmethod(request, 'get')
     post = partialmethod(request, 'post')
 
-    def create_issue(self, project_key, summary, issue_type):
+    def create_issue(self, project_key: str, summary: str, issue_type: str) -> dict:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
@@ -50,7 +50,7 @@ class JiraV3:
         }
         return self.post(self.BASE_URL + '/issue', headers=headers, data=json.dumps(payload))
     
-    def add_issue_attachment(self, issue_id, file):
+    def add_issue_attachment(self, issue_id: int, file) -> dict:
         headers = {
             "Accept": "application/json",
             "X-Atlassian-Token": "no-check"
