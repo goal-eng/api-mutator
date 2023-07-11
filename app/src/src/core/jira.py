@@ -11,6 +11,24 @@ log = getLogger(__name__)
 
 @dataclass
 class JiraV3:
+    """
+    Jira REST API Cient
+
+    Jira REST API URL: https://<your-domain>.atlassian.net/rest/api/3
+
+    We can use these 2 authentication methods provided by Jira for the REST API.
+    - Non-Connect apps created in the developer console, see OAuth 2.0 (3LO) apps.
+    - Simple scripts or to make REST API calls yourself, see Basic auth for REST APIs.
+    Basic auth is not as secure as other methods, but the API token is long enough and more secure than normal password.
+    So we can use Basic auth.
+
+    To implement Basic auth, email and API token are needed.
+    You can find more information on how to manage API tokens at:
+        https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/
+    Any member's credential can be used to create an issue and this member will be the reporter of those issues.
+
+    Additionally, you also need a project key to create an issue.
+    """
     BASE_URL = settings.JIRA_API_URL
     AUTH_EMAIL = settings.JIRA_API_AUTH_EMAIL
     AUTH_TOKEN = settings.JIRA_API_AUTH_TOKEN
