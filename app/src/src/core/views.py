@@ -30,7 +30,7 @@ from src.core.permutations import check_and_remove_auth_headers, permute_locatio
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
 hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
-jira = JiraV3()
+jira = JiraV3(settings.JIRA_PROJECT_KEY)
 
 
 class HubstaffUserNotFound(Exception):
@@ -388,12 +388,18 @@ class SubmitTaskView(FormView):
 
     def form_valid(self, form):
         zip_file = form.cleaned_data.get('zip_file')
+        email = self.request.user.email
+
         try:
             if SubmitTaskAttempt.objects.filter(datetime__gte=now() - timedelta(hours=1)).count() >= 10:
                 raise PermissionDenied('Server is currently unavailable, please try again later')
-            issue_summary = 'Hubstaff bot - ' + self.request.user.email
-            new_issue = jira.create_issue(settings.JIRA_PROJECT_KEY, issue_summary, 'Task')
-            jira.add_issue_attachment(new_issue['id'], ('hubstaff_bot_' + zip_file.name, zip_file))
+            
+            issues = jira.find_issue_by_summary('Hubstaff bot ' + email)
+            if len(issues) > 0:
+                issue = issues[0]
+            else:
+                issue = jira.create_issue('Hubstaff bot - ' + email, 'Task')
+            jira.add_issue_attachment(issue['id'], ('hubstaff_bot_' + zip_file.name, zip_file))
             messages.success(self.request, 'Your task is successfully submitted')
         except (PermissionDenied, ParameterError, ValueError) as exc:
             messages.error(self.request, str(exc))

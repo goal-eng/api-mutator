@@ -27,13 +27,14 @@ class JiraV3:
         https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/
     Any member's credential can be used to create an issue and this member will be the reporter of those issues.
 
-    Additionally, you also need a project key to create an issue.
+    You also need to pass a project_key to manage issues when you create a JiraV3 object.
     """
     BASE_URL = settings.JIRA_API_URL
     AUTH_EMAIL = settings.JIRA_API_AUTH_EMAIL
     AUTH_TOKEN = settings.JIRA_API_AUTH_TOKEN
 
-    def __init__(self):
+    def __init__(self, project_key):
+        self.project_key = project_key
         self.session = requests.Session()
 
     def request(self, verb: str, path: str, *args, **kwargs) -> dict:
@@ -50,7 +51,18 @@ class JiraV3:
     get = partialmethod(request, 'get')
     post = partialmethod(request, 'post')
 
-    def create_issue(self, project_key: str, summary: str, issue_type: str) -> dict:
+    def find_issue_by_summary(self, summary: str) -> dict:
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        params = {
+            'jql': f'project = {self.project_key} AND summary ~ "{summary}"',
+            'maxResults': 1,
+        }
+        return self.get(self.BASE_URL + '/search', headers=headers, params=params)['issues']
+
+    def create_issue(self, summary: str, issue_type: str) -> dict:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
@@ -58,7 +70,7 @@ class JiraV3:
         payload = {
             "fields": {
                 "project": {
-                    "key": project_key
+                    "key": self.project_key
                 },
                 "summary": summary,
                 "issuetype": {
