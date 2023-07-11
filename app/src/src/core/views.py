@@ -23,7 +23,7 @@ from src.core.forms import SubmitTaskForm
 from src.core.hubstaff import HubstaffV2
 from src.core.jira import JiraV3
 from src.core.mixer import ApiMixer, Parameter
-from src.core.models import AccessAttemptFailure
+from src.core.models import AccessAttemptFailure, SubmitTaskAttempt
 from src.core.permutations import check_and_remove_auth_headers, permute_locations, permute_paths, permute_result, \
                                   permute_result_processor, personal_filter_result_processor, redirect_self_endpoint
 
@@ -388,12 +388,15 @@ class SubmitTaskView(FormView):
 
     def form_valid(self, form):
         zip_file = form.cleaned_data.get('zip_file')
-
         try:
+            if SubmitTaskAttempt.objects.filter(datetime__gte=now() - timedelta(hours=1)).count() >= 10:
+                raise PermissionDenied('Server is currently unavailable, please try again later')
             issue_summary = 'Hubstaff bot - ' + self.request.user.email
             new_issue = jira.create_issue(settings.JIRA_PROJECT_KEY, issue_summary, 'Task')
-            jira.add_issue_attachment(new_issue['id'], zip_file)
+            jira.add_issue_attachment(new_issue['id'], ('hubstaff_bot_' + zip_file.name, zip_file))
             messages.success(self.request, 'Your task is successfully submitted')
+        except (PermissionDenied, ParameterError, ValueError) as exc:
+            messages.error(self.request, str(exc))
         except Exception as exc:
             sentry_sdk.capture_exception(exc)
             log.error(exc)
