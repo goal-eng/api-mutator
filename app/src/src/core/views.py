@@ -399,7 +399,7 @@ class SubmitTaskView(FormView):
                 issue = issues[0]
             else:
                 issue = jira.create_issue('Hubstaff bot - ' + email, 'Task')
-            jira.add_issue_attachment(issue['id'], ('hubstaff_bot_' + zip_file.name, zip_file))
+            jira.add_issue_attachment(issue['id'], ('hubstaff_bot_' + email + '_' + zip_file.name, zip_file))
             messages.success(self.request, 'Your task is successfully submitted')
         except (PermissionDenied, ParameterError, ValueError) as exc:
             messages.error(self.request, str(exc))
