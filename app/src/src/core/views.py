@@ -405,12 +405,8 @@ class SubmitTaskView(FormView):
             
             SubmitTaskAttempt.objects.create(user=user)
             messages.success(self.request, 'Your task was successfully submitted')
-        except (PermissionDenied, ParameterError, ValueError) as exc:
+        except PermissionDenied as exc:
             messages.error(self.request, str(exc), 'danger')
-        except Exception as exc:
-            sentry_sdk.capture_exception(exc)
-            log.error(exc)
-            messages.error(self.request, 'Something went wrong, we\'re investigating', 'danger')
 
         return self.render_to_response(self.get_context_data(form=form))
 
