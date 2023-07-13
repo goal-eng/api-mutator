@@ -393,14 +393,17 @@ class SubmitTaskView(FormView):
         try:
             if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(days=30)).count() >= 2:
                 raise PermissionDenied('You have exceeded allowed submission count.')
-            
-            issues = jira.find_issue_by_summary('Hubstaff bot ' + user.email)
+
+            custom_fields = {
+                settings.JIRA_HUBSTAFF_BOT_SUBMISSION_CANDIDATE_EMAIL_CF: user.email,
+            }
+            issues = jira.find_issue_by_custom_field(custom_fields)
             if len(issues) > 0:
                 issue = issues[0]
                 if len(issues) > 1:
                     log.info(f"There are multiple issues for the candidate `%s`. Selected the lastest issue `%s`.", user.email, issue['key'])
             else:
-                issue = jira.create_issue('Hubstaff bot - ' + user.email, 'Task')
+                issue = jira.create_issue(f'Hubstaff bot - {user.email}', settings.JIRA_HUBSTAFF_BOT_SUBMISSION_ISSUE_TYPE, custom_fields=custom_fields)
             jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
             
             SubmitTaskAttempt.objects.create(user=user)
