@@ -62,3 +62,8 @@ class HubstaffAccessInfo(models.Model):
 
     def __str__(self) -> str:
         return f'{self.token_type} {self.access_token} (expires at {self.expires_at})'
+
+
+class SubmitTaskAttempt(models.Model):
+    user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='submit_attempts')
+    datetime = models.DateTimeField(auto_now_add=True)

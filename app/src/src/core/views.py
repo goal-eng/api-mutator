@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Union
 import requests
 import sentry_sdk
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
 from django.db import transaction
@@ -17,15 +18,19 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
+from django.views.generic.edit import FormView
+from src.core.forms import SubmitTaskForm
 from src.core.hubstaff import HubstaffV2
+from src.core.jira import JiraV3
 from src.core.mixer import ApiMixer, Parameter
-from src.core.models import AccessAttemptFailure
+from src.core.models import AccessAttemptFailure, SubmitTaskAttempt
 from src.core.permutations import check_and_remove_auth_headers, permute_locations, permute_paths, permute_result, \
                                   permute_result_processor, personal_filter_result_processor, redirect_self_endpoint
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
 hubstaff = HubstaffV2(refresh_token=settings.HUBSTAFF_REFRESH_TOKEN)
+jira = JiraV3(settings.JIRA_PROJECT_KEY)
 
 
 class HubstaffUserNotFound(Exception):
@@ -375,6 +380,35 @@ def proxy(request, user_pk: int):
         result = processor(result)
 
     return JsonResponse(status=status_code, data=result)
+
+
+class SubmitTaskView(FormView):
+    template_name = 'submit_task.html'
+    form_class = SubmitTaskForm
+
+    def form_valid(self, form):
+        zip_file = form.cleaned_data.get('zip_file')
+        user = self.request.user
+
+        try:
+            if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(days=30)).count() >= 2:
+                raise PermissionDenied('You have exceeded allowed submission count.')
+            
+            issues = jira.find_issue_by_summary('Hubstaff bot ' + user.email)
+            if len(issues) > 0:
+                issue = issues[0]
+                if len(issues) > 1:
+                    log.info(f"There are multiple issues for the candidate `%s`. Selected the lastest issue `%s`.", user.email, issue['key'])
+            else:
+                issue = jira.create_issue('Hubstaff bot - ' + user.email, 'Task')
+            jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
+            
+            SubmitTaskAttempt.objects.create(user=user)
+            messages.success(self.request, 'Your task was successfully submitted')
+        except PermissionDenied as exc:
+            messages.error(self.request, str(exc), 'danger')
+
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 def handler404(request, exception):

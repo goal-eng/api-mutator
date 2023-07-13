@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <style>
+        ul.errorlist li {
+            color: red;
+        }
+    </style>
+
+    <div class="container pt-4">
+        <div class="row">
+            <div class="col col-md-6 mx-auto text-center alert alert-info">
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li{% if message.tags %} class="text-{{ message.tags }}"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <p>Submit your solution here.</p>
+                    {{ form.as_p }}
+                    <button type="submit" id="submit-solution">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('submit-solution').addEventListener('click', function(event) {
+            if (!confirm('Once you submit your solution, you will not be able to make any changes. Are you sure you\' are ready to submit?')) {
+                event.preventDefault();
+            }
+        });
+    </script>
+{% endblock %}
