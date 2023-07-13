@@ -9,14 +9,6 @@ from logging import getLogger
 log = getLogger(__name__)
 
 
-class JiraV3Error(Exception):
-    pass
-
-
-class InvalidJQLError(JiraV3Error):
-    pass
-
-
 @dataclass
 class JiraV3:
     """
@@ -60,15 +52,14 @@ class JiraV3:
     post = partialmethod(request, 'post')
 
     def find_issue_by_summary(self, summary: str) -> dict:
-        if any(c in summary for c in "\'\"\\"):
-            raise InvalidJQLError(f'Invalid JQL: {summary}')
+        summary = jql_escape_string(summary)
 
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
         }
         params = {
-            'jql': f'project = {self.project_key} AND summary ~ "{summary}" ORDER BY createdDate DESC',
+            'jql': f'project = {self.project_key} AND summary ~ {summary} ORDER BY createdDate DESC',
             'maxResults': 2,
         }
         return self.get(self.BASE_URL + '/search', headers=headers, params=params)['issues']
@@ -101,3 +92,11 @@ class JiraV3:
             headers = headers,
             files = { 'file': file }
         )
+
+
+def jql_escape_string(text: str) -> str:
+  """
+  https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
+  """
+  text = text.replace('"', '').replace('\\', '').replace('\n', '')
+  return f'"{text}"'
