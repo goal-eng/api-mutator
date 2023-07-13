@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import requests
 from dataclasses import dataclass
@@ -51,20 +53,31 @@ class JiraV3:
     get = partialmethod(request, 'get')
     post = partialmethod(request, 'post')
 
-    def find_issue_by_summary(self, summary: str) -> dict:
-        summary = jql_escape_string(summary)
+    def find_issue_by_custom_field(self, custom_fields: dict[int, str]) -> list[dict]:
+        """
+
+        :param custom_fields:
+            custom field and value to search for - we assume all are text fields
+        :return: matched issues
+        """
 
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
         }
+        custom_fields_jql = ' AND '.join([
+            f'cf[{key}] ~ {text_exact_match(value)}'
+            for key, value in custom_fields.items()
+        ])
+        log.info(f'custom_fields_jql: {custom_fields_jql}')
+
         params = {
-            'jql': f'project = {self.project_key} AND summary ~ {summary} ORDER BY createdDate DESC',
+            'jql': f'project = {self.project_key} AND {custom_fields_jql} ORDER BY createdDate DESC',
             'maxResults': 2,
         }
         return self.get(self.BASE_URL + '/search', headers=headers, params=params)['issues']
 
-    def create_issue(self, summary: str, issue_type: str) -> dict:
+    def create_issue(self, summary: str, issue_type: str, custom_fields: dict[int, str]) -> dict:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
@@ -77,6 +90,10 @@ class JiraV3:
                 "summary": summary,
                 "issuetype": {
                     "name": issue_type
+                },
+                **{
+                    f'customfield_{key}': value
+                    for key, value in custom_fields.items()
                 }
             }
         }
@@ -94,9 +111,21 @@ class JiraV3:
         )
 
 
+def text_exact_match(text: str) -> str:
+    """
+    Used to search for exact match of text in Jira with ~ operator
+    """
+    return jql_escape_string(f'"{text}"')
+
+
 def jql_escape_string(text: str) -> str:
     """
     https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
     """
-    text = text.replace('"', '').replace('\\', '').replace('\n', '')
+    special_characters = '+-&|!(){}[]^~*?\\:\n"'
+    text = text.translate(
+        str.maketrans({
+            c: fr'\{c}' for c in special_characters
+        })
+    )
     return f'"{text}"'
