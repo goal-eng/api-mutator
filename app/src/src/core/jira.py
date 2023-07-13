@@ -69,7 +69,6 @@ class JiraV3:
             f'cf[{key}] ~ {text_exact_match(value)}'
             for key, value in custom_fields.items()
         ])
-        log.info(f'custom_fields_jql: {custom_fields_jql}')
 
         params = {
             'jql': f'project = {self.project_key} AND {custom_fields_jql} ORDER BY createdDate DESC',
