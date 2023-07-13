@@ -6,11 +6,31 @@ import sentry_sdk
 from django.urls import reverse_lazy
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from functools import wraps
+import inspect
 
 root = environ.Path(__file__) - 2
-env = environ.Env(
-    DEBUG=(bool, False),
-)
+
+env = environ.Env(DEBUG=(bool, False))
+
+# .env file contents are not passed to docker image during build stage;
+# this results in errors if you require some env var to be set, as if in "env('MYVAR')" -
+# obviously it's not set during build stage, but you don't care and want to ignore that.
+# To mitigate this, we set ENV_FILL_MISSING_VALUES=1 during build phase, and it activates
+# monkey-patching of "environ" module, so that all unset variables are set to None and
+# the library is not complaining anymore
+if env.bool('ENV_FILL_MISSING_VALUES', default=False):
+
+    def patch(fn):
+        @wraps(fn)
+        def wrapped(*args, **kwargs):
+            if kwargs.get('default') is env.NOTSET:
+                kwargs['default'] = None
+            return fn(*args, **kwargs)
+        return wrapped
+
+    for name, method in inspect.getmembers(env, predicate=inspect.ismethod):
+        setattr(env, name, patch(method))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
