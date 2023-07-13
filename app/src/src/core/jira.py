@@ -81,7 +81,7 @@ class JiraV3:
             }
         }
         return self.post(self.BASE_URL + '/issue', headers=headers, data=json.dumps(payload))
-    
+
     def add_issue_attachment(self, issue_id: int, file) -> dict:
         headers = {
             "Accept": "application/json",
@@ -89,14 +89,14 @@ class JiraV3:
         }
         return self.post(
             self.BASE_URL + f'/issue/{issue_id}/attachments',
-            headers = headers,
-            files = { 'file': file }
+            headers=headers,
+            files={'file': file}
         )
 
 
 def jql_escape_string(text: str) -> str:
-  """
-  https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
-  """
-  text = text.replace('"', '').replace('\\', '').replace('\n', '')
-  return f'"{text}"'
+    """
+    https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
+    """
+    text = text.replace('"', '').replace('\\', '').replace('\n', '')
+    return f'"{text}"'
