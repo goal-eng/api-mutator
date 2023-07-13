@@ -16,6 +16,14 @@ For better understanding under-the-hood logic, please see `ApiMixer`'s docstring
 
 Skeleton of this project was generated with `cookiecutter-rt-django`, which sometimes gets upgrades that are easy to retrofit into already older projects.
 
+Set Jira API access credentials
+------------
+
+When a candidate uploads his solution in `/submit/` page, it is attached to a Jira issue that is created automatically for each candidate.
+To enable this feature, we need to set credentials of one person who will be the reporter of that issue.
+
+For better understanding, please see `JiraV3`'s docstring.
+
 Base requirements
 ------------
 
