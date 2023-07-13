@@ -9,6 +9,14 @@ from logging import getLogger
 log = getLogger(__name__)
 
 
+class JiraV3Error(Exception):
+    pass
+
+
+class InvalidJQLError(JiraV3Error):
+    pass
+
+
 @dataclass
 class JiraV3:
     """
@@ -52,6 +60,9 @@ class JiraV3:
     post = partialmethod(request, 'post')
 
     def find_issue_by_summary(self, summary: str) -> dict:
+        if any(c in summary for c in "\'\"\\"):
+            raise InvalidJQLError(f'Invalid JQL: {summary}')
+
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
