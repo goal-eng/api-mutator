@@ -29,10 +29,8 @@
 
     <script>
         document.getElementById('submit-solution').addEventListener('click', function(event) {
-            event.preventDefault();
-            
-            if (confirm('Once you submit your solution, you will not be able to make any changes. Are you sure you\' are ready to submit?')) {
-                document.getElementsByTagName('form').submit();
+            if (!confirm('Once you submit your solution, you will not be able to make any changes. Are you sure you\' are ready to submit?')) {
+                event.preventDefault();
             }
         });
     </script>

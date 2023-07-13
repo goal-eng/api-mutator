@@ -67,3 +67,4 @@ class HubstaffAccessInfo(models.Model):
 class SubmitTaskAttempt(models.Model):
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='submit_attempts')
     datetime = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField(default=False)

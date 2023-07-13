@@ -389,10 +389,13 @@ class SubmitTaskView(FormView):
     def form_valid(self, form):
         zip_file = form.cleaned_data.get('zip_file')
         user = self.request.user
+        success = False
 
         try:
             if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(hours=1)).count() >= 10:
                 raise PermissionDenied('Server is currently unavailable, please try again later')
+            if SubmitTaskAttempt.objects.filter(user=user, success=True, datetime__gte=now() - timedelta(days=30)).count() >= 2:
+                raise PermissionDenied('You have exceeded allowed submission count.')
             
             issues = jira.find_issue_by_summary('Hubstaff bot ' + user.email)
             if len(issues) > 0:
@@ -402,14 +405,17 @@ class SubmitTaskView(FormView):
             else:
                 issue = jira.create_issue('Hubstaff bot - ' + user.email, 'Task')
             jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
+            
             messages.success(self.request, 'Your task was successfully submitted')
+            success = True
         except (PermissionDenied, ParameterError, ValueError) as exc:
-            messages.error(self.request, str(exc))
+            messages.error(self.request, str(exc), 'danger')
         except Exception as exc:
             sentry_sdk.capture_exception(exc)
             log.error(exc)
             messages.error(self.request, 'Something went wrong, we\'re investigating', 'danger')
-    
+
+        SubmitTaskAttempt.objects.create(user=user, success=success)
         return self.render_to_response(self.get_context_data(form=form))
 
 
