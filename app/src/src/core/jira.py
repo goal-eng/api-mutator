@@ -57,8 +57,8 @@ class JiraV3:
             "Content-Type": "application/json"
         }
         params = {
-            'jql': f'project = {self.project_key} AND summary ~ "{summary}"',
-            'maxResults': 1,
+            'jql': f'project = {self.project_key} AND summary ~ "{summary}" ORDER BY createdDate DESC',
+            'maxResults': 2,
         }
         return self.get(self.BASE_URL + '/search', headers=headers, params=params)['issues']
 

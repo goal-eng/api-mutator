@@ -397,6 +397,8 @@ class SubmitTaskView(FormView):
             issues = jira.find_issue_by_summary('Hubstaff bot ' + email)
             if len(issues) > 0:
                 issue = issues[0]
+                if len(issues) > 1:
+                    log.info(f"There are multiple issues for candidate {email}. Selected the lastest issue {issue['key']}.")
             else:
                 issue = jira.create_issue('Hubstaff bot - ' + email, 'Task')
             jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{email}_{zip_file.name}', zip_file))
