@@ -388,20 +388,20 @@ class SubmitTaskView(FormView):
 
     def form_valid(self, form):
         zip_file = form.cleaned_data.get('zip_file')
-        email = self.request.user.email
+        user = self.request.user
 
         try:
-            if SubmitTaskAttempt.objects.filter(datetime__gte=now() - timedelta(hours=1)).count() >= 10:
+            if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(hours=1)).count() >= 10:
                 raise PermissionDenied('Server is currently unavailable, please try again later')
             
-            issues = jira.find_issue_by_summary('Hubstaff bot ' + email)
+            issues = jira.find_issue_by_summary('Hubstaff bot ' + user.email)
             if len(issues) > 0:
                 issue = issues[0]
                 if len(issues) > 1:
-                    log.info(f"There are multiple issues for the candidate `{email}`. Selected the lastest issue `{issue['key']}`.")
+                    log.info(f"There are multiple issues for the candidate `{user.email}`. Selected the lastest issue `{issue['key']}`.")
             else:
-                issue = jira.create_issue('Hubstaff bot - ' + email, 'Task')
-            jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{email}_{zip_file.name}', zip_file))
+                issue = jira.create_issue('Hubstaff bot - ' + user.email, 'Task')
+            jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
             messages.success(self.request, 'Your task was successfully submitted')
         except (PermissionDenied, ParameterError, ValueError) as exc:
             messages.error(self.request, str(exc))
