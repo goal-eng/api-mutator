@@ -391,8 +391,8 @@ class SubmitTaskView(FormView):
         user = self.request.user
 
         try:
-            # if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(days=30)).count() >= 2:
-            #     raise PermissionDenied('You have exceeded allowed submission count.')
+            if SubmitTaskAttempt.objects.filter(user=user, datetime__gte=now() - timedelta(days=30)).count() >= 2:
+                raise PermissionDenied('You have exceeded allowed submission count.')
 
             custom_fields = {
                 settings.JIRA_HUBSTAFF_BOT_SUBMISSION_CANDIDATE_EMAIL_CF: user.email,
