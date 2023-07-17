@@ -401,7 +401,7 @@ class SubmitTaskView(FormView):
             issues = jira.find_issue_by_custom_field(custom_fields)
             if len(issues) > 0:
                 issue = issues[0]
-                issue_created = datetime.strptime(issue['fields']['created'], '%Y-%m-%dT%H:%M:%S.%f%z')
+                issue_created = datetime.fromisoformat(issue['fields']['created'])
                 if (now() - issue_created) > timedelta(days=30):
                     issue = None
                     log.info(f"The latest issue for the candidate `%s` was created over 30 days ago so created a new issue.", user.email)
