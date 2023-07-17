@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from functools import lru_cache, partial
 from pprint import pformat
 from typing import Dict, List, Tuple, Union
@@ -397,12 +397,17 @@ class SubmitTaskView(FormView):
             custom_fields = {
                 settings.JIRA_HUBSTAFF_BOT_SUBMISSION_CANDIDATE_EMAIL_CF: user.email,
             }
+            issue = None
             issues = jira.find_issue_by_custom_field(custom_fields)
             if len(issues) > 0:
                 issue = issues[0]
-                if len(issues) > 1:
+                issue_created = datetime.fromisoformat(issue['fields']['created'])
+                if (now() - issue_created) > timedelta(days=30):
+                    issue = None
+                    log.info(f"The latest issue for the candidate `%s` was created over 30 days ago so created a new issue.", user.email)
+                elif len(issues) > 1:
                     log.info(f"There are multiple issues for the candidate `%s`. Selected the lastest issue `%s`.", user.email, issue['key'])
-            else:
+            if not issue:
                 issue = jira.create_issue(f'Hubstaff bot - {user.email}', settings.JIRA_HUBSTAFF_BOT_SUBMISSION_ISSUE_TYPE, custom_fields=custom_fields)
             jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
             
