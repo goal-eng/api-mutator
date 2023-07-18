@@ -1,16 +1,16 @@
 import json
 import logging
-from datetime import timedelta, datetime
-from functools import lru_cache, partial
+from datetime import datetime, timedelta
+from functools import lru_cache, partial, wraps
 from pprint import pformat
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import requests
 import sentry_sdk
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -19,13 +19,20 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from django.views.generic.base import View
 from django.views.generic.edit import FormView
+from ratelimit import RateLimitException, limits
+
 from src.core.forms import SubmitTaskForm
 from src.core.hubstaff import HubstaffV2
 from src.core.jira import JiraV3
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure, SubmitTaskAttempt
-from src.core.permutations import check_and_remove_auth_headers, permute_locations, permute_paths, permute_result, \
-                                  permute_result_processor, personal_filter_result_processor, redirect_self_endpoint
+from src.core.permutations import (
+    check_and_remove_auth_headers,
+    permute_locations,
+    permute_paths,
+    personal_filter_result_processor,
+    redirect_self_endpoint,
+)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__file__)
@@ -296,8 +303,22 @@ def jsonify_exceptions(fn: callable) -> callable:
     return wrapper
 
 
+def rate_limit(fn: Callable) -> Callable:
+    limited_fn = limits(calls=16, period=60)(fn)
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return limited_fn(*args, **kwargs)
+        except RateLimitException:
+            return JsonResponse(status=429, data={'error': 'Rate limit exceeded, please retry in a minute'})
+
+    return wrapper
+
+
 @csrf_exempt
 @jsonify_exceptions
+@rate_limit
 def proxy(request, user_pk: int):
     if AccessAttemptFailure.objects.filter(datetime__gte=now() - timedelta(hours=1)).count() >= 10:
         raise PermissionDenied('Proxy is currently unavailable, please try again later')
@@ -404,13 +425,13 @@ class SubmitTaskView(FormView):
                 issue_created = datetime.fromisoformat(issue['fields']['created'])
                 if (now() - issue_created) > timedelta(days=30):
                     issue = None
-                    log.info(f"The latest issue for the candidate `%s` was created over 30 days ago so created a new issue.", user.email)
+                    log.info("The latest issue for the candidate `%s` was created over 30 days ago so created a new issue.", user.email)
                 elif len(issues) > 1:
-                    log.info(f"There are multiple issues for the candidate `%s`. Selected the lastest issue `%s`.", user.email, issue['key'])
+                    log.info("There are multiple issues for the candidate `%s`. Selected the lastest issue `%s`.", user.email, issue['key'])
             if not issue:
                 issue = jira.create_issue(f'Hubstaff bot - {user.email}', settings.JIRA_HUBSTAFF_BOT_SUBMISSION_ISSUE_TYPE, custom_fields=custom_fields)
             jira.add_issue_attachment(issue['id'], (f'hubstaff_bot_{user.email}_{zip_file.name}', zip_file))
-            
+
             SubmitTaskAttempt.objects.create(user=user)
             messages.success(self.request, 'Your task was successfully submitted')
         except PermissionDenied as exc:
