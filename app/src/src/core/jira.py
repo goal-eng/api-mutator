@@ -114,14 +114,15 @@ def text_exact_match(text: str) -> str:
     """
     Used to search for exact match of text in Jira with ~ operator
     """
-    return jql_escape_string(f'"{text}"')
+    return _jql_escape_string(f'"{text}"')
 
 
-def jql_escape_string(text: str) -> str:
+def _jql_escape_string(text: str) -> str:
     """
-    https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
+
+    https://jira.atlassian.com/browse/JRASERVER-27647
     """
-    special_characters = '+-&|!(){}[]^~*?\\:\n"'
+    special_characters = '\'"\t\n\r\\ '
     text = text.translate(
         str.maketrans({
             c: fr'\{c}' for c in special_characters
