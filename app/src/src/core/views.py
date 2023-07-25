@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from functools import lru_cache, partial, wraps
 from pprint import pformat
 from typing import Callable, Dict, List, Tuple, Union
@@ -23,7 +23,7 @@ from ratelimit import RateLimitException, limits
 
 from src.core.forms import SubmitTaskForm
 from src.core.hubstaff import HubstaffV2
-from src.core.jira import JiraV3
+from src.core.jira import JiraV3, dt
 from src.core.mixer import ApiMixer, Parameter
 from src.core.models import AccessAttemptFailure, SubmitTaskAttempt
 from src.core.permutations import (
@@ -422,7 +422,7 @@ class SubmitTaskView(FormView):
             issues = jira.find_issue_by_custom_field(custom_fields)
             if len(issues) > 0:
                 issue = issues[0]
-                issue_created = datetime.fromisoformat(issue['fields']['created'])
+                issue_created = dt(issue['fields']['created'])
                 if (now() - issue_created) > timedelta(days=30):
                     issue = None
                     log.info("The latest issue for the candidate `%s` was created over 30 days ago so created a new issue.", user.email)

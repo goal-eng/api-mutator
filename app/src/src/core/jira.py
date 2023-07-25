@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import requests
 from dataclasses import dataclass
@@ -115,6 +116,17 @@ def text_exact_match(text: str) -> str:
     Used to search for exact match of text in Jira with ~ operator
     """
     return _jql_escape_string(f'"{text}"')
+
+
+def dt(jira_dt: str) -> datetime.datetime:
+    """
+    Jira datetime string to timezone aware datetime object
+    """
+    try:
+        datetime_obj = datetime.datetime.strptime(jira_dt, '%Y-%m-%dT%H:%M:%S.%f%z')
+    except ValueError:  # no microseconds
+        datetime_obj = datetime.datetime.strptime(jira_dt, '%Y-%m-%dT%H:%M:%S%z')
+    return datetime_obj
 
 
 def _jql_escape_string(text: str) -> str:
